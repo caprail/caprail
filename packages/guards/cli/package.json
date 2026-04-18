@@ -4,6 +4,16 @@
   "description": "Transport-agnostic CLI guard core for Caprail",
   "type": "module",
   "main": "./src/index.js",
+  "exports": {
+    ".": "./src/index.js"
+  },
+  "files": [
+    "README.md",
+    "src"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
   "scripts": {
     "test": "node --test ./test/*.test.js"
   },
