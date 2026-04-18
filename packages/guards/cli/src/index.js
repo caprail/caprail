@@ -1,10 +1,13 @@
 export const packageName = '@caprail/guard-cli';
 
 export {
+  findExecutable,
   getDefaultConfigPaths,
+  loadAndValidateConfig,
   loadConfig,
   parseConfig,
   resolveConfigPath,
+  validateConfig,
 } from './config.js';
 
 export {

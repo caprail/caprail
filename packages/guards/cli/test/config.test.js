@@ -9,6 +9,7 @@ import {
   loadConfig,
   parseConfig,
   resolveConfigPath,
+  validateConfig,
 } from '../src/config.js';
 
 function createTempDir() {
@@ -209,4 +210,130 @@ tools:
   assert.equal(result.ok, true);
   assert.equal(result.config.source.path, resolve(configPath));
   assert.deepEqual(result.config.tools.az.allow, ['group list']);
+});
+
+test('validate returns a clean report for a good config', () => {
+  const parsed = parseConfig(`
+settings:
+  audit_log: none
+  audit_format: jsonl
+tools:
+  node:
+    binary: ${JSON.stringify(process.execPath)}
+    allow:
+      - fixtures
+    deny:
+      - fixtures blocked
+`, { configPath: '/tmp/policy.yaml' });
+
+  assert.equal(parsed.ok, true);
+
+  const report = validateConfig(parsed.config);
+
+  assert.deepEqual(report, {
+    valid: true,
+    errors: [],
+    warnings: [],
+  });
+});
+
+test('warning reports missing binaries without failing validation', () => {
+  const parsed = parseConfig(`
+tools:
+  az:
+    binary: definitely-missing-binary-for-caprail-tests
+    allow:
+      - group list
+`, { configPath: '/tmp/policy.yaml' });
+
+  assert.equal(parsed.ok, true);
+
+  const report = validateConfig(parsed.config, {
+    env: {
+      PATH: '',
+    },
+    platform: 'linux',
+  });
+
+  assert.equal(report.valid, true);
+  assert.equal(report.errors.length, 0);
+  assert.equal(report.warnings[0].code, 'binary_not_found');
+});
+
+test('validate reports unsupported audit formats as errors', () => {
+  const parsed = parseConfig(`
+settings:
+  audit_log: none
+  audit_format: xml
+tools:
+  gh:
+    binary: ${JSON.stringify(process.execPath)}
+    allow:
+      - pr list
+`, { configPath: '/tmp/policy.yaml' });
+
+  assert.equal(parsed.ok, true);
+
+  const report = validateConfig(parsed.config);
+
+  assert.equal(report.valid, false);
+  assert.equal(report.errors[0].code, 'audit_format_invalid');
+});
+
+test('audit validation fails when the audit log parent directory is missing', () => {
+  const tempDir = createTempDir();
+  const auditPath = join(tempDir, 'missing-dir', 'audit.log');
+  const parsed = parseConfig(`
+settings:
+  audit_log: ${JSON.stringify(auditPath)}
+  audit_format: text
+tools:
+  gh:
+    binary: ${JSON.stringify(process.execPath)}
+    allow:
+      - pr list
+`, { configPath: '/tmp/policy.yaml' });
+
+  assert.equal(parsed.ok, true);
+
+  const report = validateConfig(parsed.config);
+
+  assert.equal(report.valid, false);
+  assert.equal(report.errors[0].code, 'audit_log_unwritable');
+});
+
+test('warning reports likely unreachable deny entries', () => {
+  const parsed = parseConfig(`
+tools:
+  gh:
+    binary: ${JSON.stringify(process.execPath)}
+    allow:
+      - pr list
+    deny:
+      - pr create
+`, { configPath: '/tmp/policy.yaml' });
+
+  assert.equal(parsed.ok, true);
+
+  const report = validateConfig(parsed.config);
+
+  assert.equal(report.valid, true);
+  assert.equal(report.warnings[0].code, 'unreachable_deny_entry');
+});
+
+test('validate rejects empty policy entries as startup-fatal errors', () => {
+  const parsed = parseConfig(`
+tools:
+  gh:
+    binary: ${JSON.stringify(process.execPath)}
+    allow:
+      - "   "
+`, { configPath: '/tmp/policy.yaml' });
+
+  assert.equal(parsed.ok, true);
+
+  const report = validateConfig(parsed.config);
+
+  assert.equal(report.valid, false);
+  assert.equal(report.errors[0].code, 'policy_entry_empty');
 });
