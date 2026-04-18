@@ -1,6 +1,4 @@
 # Example Caprail CLI guard policy.
-# The package family is Caprail, while the compatibility config surface still
-# uses the spec's current cliguard file/env naming.
 
 settings:
   audit_log: none

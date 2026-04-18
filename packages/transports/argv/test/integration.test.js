@@ -150,5 +150,5 @@ test('integration execute denied command maps to exit 126', async () => {
 
   assert.equal(result.exitCode, 126);
   assert.equal(stdout.text(), '');
-  assert.match(stderr.text(), /cliguard: denied/);
+  assert.match(stderr.text(), /caprail-cli: denied/);
 });

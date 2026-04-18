@@ -392,7 +392,7 @@ function formatExplainReason(payload) {
 function formatDeniedMessage(commandTokens, message) {
   const renderedTokens = commandTokens.join(' ');
   const detail = message ?? 'Command denied by policy.';
-  return `cliguard: denied '${renderedTokens}' — ${detail}`;
+  return `caprail-cli: denied '${renderedTokens}' — ${detail}`;
 }
 
 function formatPolicyList(entries = []) {

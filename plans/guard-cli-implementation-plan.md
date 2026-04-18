@@ -3,7 +3,7 @@
 ## Overview
 Implement the first publishable core guard package described in `SPEC.md`: `@caprail/guard-cli`. This package should own config loading/validation, token-based policy evaluation, guarded execution, discovery payload generation, and audit logging, while staying transport-agnostic so it can later be composed into `transport-argv`, `transport-http`, and product packages.
 
-Current repo state is still design-only. The repository contains the spec, one accepted ADR, and supporting use-case/exploration docs, but there is no `packages/` tree yet and the root `package.json` still points at legacy `packages/cliguard` workspaces. The implementation therefore needs to start with workspace/package scaffolding before guard behavior can be added.
+Current repo state is still design-only. The repository contains the spec, one accepted ADR, and supporting use-case/exploration docs, but there is no `packages/` tree yet. The implementation therefore needs to start with workspace/package scaffolding before guard behavior can be added.
 
 ## Scope
 
@@ -25,13 +25,11 @@ Current repo state is still design-only. The repository contains the spec, one a
 - `SPEC.md` defines the target architecture, behavior, package layout, and success criteria.
 - `docs/decisions/ADR-001-adopt-caprail-family-name.md` locks in the `caprail` family naming.
 - `docs/usecase-docker-sidecar.md` and `docs/usecase-pi-container-host-wrapper.md` confirm why the guard must stay transport-agnostic and fail closed.
-- Root `package.json` still references:
-  - `packages/cliguard`
-  - `packages/cliguard-http`
+- Root `package.json` has no implementation packages yet.
 - No implementation files, tests, examples, or package docs exist yet.
 
 ## Architecture Decisions
-- **Use `caprail` naming from the start.** Do not add new code under `packages/cliguard*`; that would immediately conflict with ADR-001.
+- **Use `caprail` naming from the start.** Place new code under `packages/guards/cli` as specified by ADR-001.
 - **Keep the guard transport-agnostic.** The public API should accept plain tool/argv/config data and return structured results, not CLI flag parsing or HTTP request/response objects.
 - **Isolate the security-critical matcher.** `src/matcher.js` should be the smallest possible unit containing normalization + allow/deny evaluation and should receive the strongest test coverage.
 - **Fail closed everywhere.** Missing config, malformed config, unknown tool names, invalid policy entries, and audit sink setup failures must all block execution.
@@ -68,7 +66,7 @@ Implementation order should prove parsing and matching before any real process e
 Replace the legacy root workspace setup with a spec-aligned package boundary for `@caprail/guard-cli`, then create the minimal package skeleton needed to install, test, and pack the guard independently. This task establishes the long-term repo shape without yet implementing guard behavior.
 
 **Acceptance criteria:**
-- [ ] Root workspaces no longer depend on `packages/cliguard*` paths.
+- [ ] Root workspaces include `packages/guards/cli`.
 - [ ] `packages/guards/cli/package.json` exists and uses the name `@caprail/guard-cli`.
 - [ ] A minimal `src/index.js` and smoke test exist so the package can be resolved and tested.
 - [ ] `yaml` is the only planned runtime dependency for the guard package.
@@ -95,7 +93,7 @@ Replace the legacy root workspace setup with a spec-aligned package boundary for
 Add `src/config.js` to resolve the policy path using the spec’s precedence rules, read YAML safely, and normalize the raw document into an internal config structure with fail-closed defaults. This task should stop short of advanced diagnostics, focusing first on predictable loading/parsing behavior.
 
 **Acceptance criteria:**
-- [ ] Config resolution follows `--config` -> `CLIGUARD_CONFIG` -> platform defaults, with no current-working-directory lookup.
+- [ ] Config resolution follows `--config` -> `CAPRAIL_CLI_CONFIG` -> platform defaults, with no current-working-directory lookup.
 - [ ] Missing optional lists (`allow`, `deny`, `deny_flags`) normalize to empty arrays.
 - [ ] Missing/unreadable/malformed config produces structured errors with no partial allow behavior.
 - [ ] Internal config objects preserve tool descriptions, binary paths, settings, and token-list inputs exactly enough for later matcher/validation work.
@@ -140,7 +138,7 @@ Build `src/matcher.js` to normalize argv tokens and evaluate allow/deny rules ex
 ### Checkpoint: Foundation
 - [ ] `npm install` works with the new workspace/package layout
 - [ ] Config parsing and matcher tests pass cleanly
-- [ ] No new code is placed under legacy `cliguard` workspace paths
+- [ ] No new code is placed under incorrect workspace paths
 - [ ] The repo is ready to add validation/execution without reworking the package boundary
 
 ### Phase 2: Core Guard Behavior
@@ -261,7 +259,7 @@ Create the package-level documentation and example policy file described in the 
 - [ ] `README.md` explains package purpose, install/use expectations, and the transport boundary.
 - [ ] `docs/config.md`, `docs/policy-model.md`, and `docs/audit.md` match implemented behavior and spec language.
 - [ ] `examples/guards/cli.policy.yaml` is valid and aligned with the canonical examples in `SPEC.md`.
-- [ ] Documentation uses `caprail` naming consistently while acknowledging `cliguard` as a temporary working example where needed.
+- [ ] Documentation uses `caprail` naming consistently.
 
 **Verification:**
 - [ ] Example-backed config tests pass against the committed example policy
@@ -299,7 +297,7 @@ Create the package-level documentation and example policy file described in the 
 | Cross-platform config-path and binary checks behave differently on Windows vs POSIX | Medium | Keep resolution/path logic centralized in `config.js` and add OS-specific test cases/fixtures |
 | Audit logging accidentally pollutes wrapped command output | High | Test logger and executor together with fixture commands that write to stdout/stderr and assert complete separation |
 | Validation warnings for unreachable deny entries become brittle | Medium | Keep them best-effort and non-fatal; document the heuristic rather than overstating certainty |
-| Workspace migration leaves hidden assumptions about `cliguard` paths | Medium | Make Task 1 remove legacy workspace references first, before any package implementation spreads them further |
+| Workspace layout mismatches naming convention | Medium | Make Task 1 establish correct workspace references first, before any package implementation spreads them further |
 | Coverage enforcement for `matcher.js` is awkward with no extra dependencies | Medium | Decide early whether built-in Node coverage is sufficient or whether a later explicit approval is needed for a coverage helper |
 
 ## Recommendations for Follow-on Work

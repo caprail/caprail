@@ -5,15 +5,15 @@
 `@caprail/guard-cli` resolves policy config in this order:
 
 1. explicit `configPath`
-2. `CLIGUARD_CONFIG`
+2. `CAPRAIL_CLI_CONFIG`
 3. platform defaults
 
 There is **no current-working-directory lookup**.
 
 ### Platform defaults
 
-- Windows: `%ProgramData%\cliguard\config.yaml`, then `%AppData%\cliguard\config.yaml`
-- Linux/macOS: `$XDG_CONFIG_HOME/cliguard/config.yaml`, then `~/.config/cliguard/config.yaml`
+- Windows: `%ProgramData%\caprail-cli\config.yaml`, then `%AppData%\caprail-cli\config.yaml`
+- Linux/macOS: `$XDG_CONFIG_HOME/caprail-cli/config.yaml`, then `~/.config/caprail-cli/config.yaml`
 
 ## Shape
 

@@ -42,7 +42,7 @@ This plan focuses only on the `@caprail/cli` product package (the local/argv pro
 - **Keep product code thin.** `@caprail/cli` should wire guard + transport, not reimplement parser/matcher/validation/execution behavior.
 - **Treat the bin as the runtime boundary.** `bin/caprail-cli.js` handles `process.argv`, stdio, env, platform, and `process.exitCode`; core logic remains in `src/main.js` for testability.
 - **Return results from `main`, set exits in bin.** Product internals should return `{ exitCode, ... }`; only bin sets process exit state.
-- **Prefer compatibility without locking branding.** Ship `caprail-cli` as canonical binary, with optional `cliguard` alias for transition compatibility if needed by existing scripts.
+- **Ship `caprail-cli` only.** No compatibility aliases are needed — there is no prior product to migrate from.
 - **No direct imports of guard internals.** Product should import from public package entrypoints only (`@caprail/guard-cli`, `@caprail/transport-argv`).
 
 ## Dependency Graph
@@ -135,7 +135,6 @@ Implement the runnable bin script(s) with shebang, call into `src/main.js`, writ
 - [ ] Bin passes `process.argv.slice(2)`, stdio, env, and platform to product runner.
 - [ ] Bin sets `process.exitCode` from returned `exitCode` (defaulting safely on malformed return).
 - [ ] Unexpected uncaught errors are rendered to stderr and mapped to exit code `1`.
-- [ ] If compatibility alias is enabled, `cliguard` is mapped explicitly in `package.json` bin field.
 
 **Verification:**
 - [ ] `node ./packages/products/cli/bin/caprail-cli.js --config <fixture> --validate --json`
@@ -192,7 +191,7 @@ Write package docs that explain what the product owns, how it composes guard+tra
 **Acceptance criteria:**
 - [ ] `README.md` includes install, quickstart, and mode examples.
 - [ ] Docs clearly describe layering: product wiring vs guard/transport responsibilities.
-- [ ] Binary naming policy is explicit (`caprail-cli`, and `cliguard` alias status if shipped).
+- [ ] Binary naming policy is explicit (`caprail-cli` only).
 - [ ] Documentation points to guard and transport docs for deeper behavior details.
 
 **Verification:**
@@ -245,7 +244,7 @@ Confirm the product is publishable and consistent with family naming/structure c
 | Product duplicates guard/transport logic and drifts over time | High | Keep `src/main.js` as wiring-only; enforce behavior through integration tests using real dependencies |
 | Exit code handling diverges between runner and bin | Medium | Centralize exit mapping in transport; bin only assigns returned `exitCode` |
 | Cross-platform bin behavior (Windows + shebang) is inconsistent | Medium | Validate through Node invocation in tests and npm pack checks; keep script simple |
-| Naming confusion between `caprail-cli` and `cliguard` | Medium | Document canonical and compatibility names explicitly; avoid implicit aliases |
+| Naming confusion between product and package names | Low | Document canonical binary name explicitly |
 | Fixture commands rely on external CLIs not available in CI | Medium | Use Node-based local fixture script/binary for deterministic tests |
 
 ## Parallelization Opportunities
@@ -256,8 +255,6 @@ Confirm the product is publishable and consistent with family naming/structure c
 
 ## Open Questions
 
-- Should `@caprail/cli` ship both `caprail-cli` and `cliguard` bins immediately, or only `caprail-cli` with migration notes? cliguard is just a working name. no product exists for it. only ship `caprail-cli`
-- Should product docs include a dedicated migration section from old `cliguard` command examples now, or defer until `@caprail/cli-http` lands? no. there is no old product to migrate from.
 - Do we want root-level convenience scripts (e.g., `npm run test:cli-product`) or keep tests package-local only? package-local only
 
 ## Recommendation

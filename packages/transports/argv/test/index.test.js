@@ -29,7 +29,7 @@ test('validate mode exits 0 and renders text for a valid config', async () => {
     guard,
     stdout: stdout.stream,
     stderr: stderr.stream,
-    env: { CLIGUARD_CONFIG: '/ignored' },
+    env: { CAPRAIL_CLI_CONFIG: '/ignored' },
     platform: 'linux',
     homeDirectory: '/home/tester',
   });
@@ -41,7 +41,7 @@ test('validate mode exits 0 and renders text for a valid config', async () => {
   assert.equal(guard.calls.loadAndValidateConfig.length, 1);
   assert.deepEqual(guard.calls.loadAndValidateConfig[0], {
     configPath: 'policy.yaml',
-    env: { CLIGUARD_CONFIG: '/ignored' },
+    env: { CAPRAIL_CLI_CONFIG: '/ignored' },
     platform: 'linux',
     homeDirectory: '/home/tester',
   });
@@ -208,11 +208,11 @@ test('list mode exits non-zero when config fails to load', async () => {
       ok: false,
       error: {
         code: 'config_not_found',
-        message: 'No cliguard config file was found.',
+        message: 'No config file was found.',
       },
       report: {
         valid: false,
-        errors: [{ code: 'config_not_found', message: 'No cliguard config file was found.' }],
+        errors: [{ code: 'config_not_found', message: 'No config file was found.' }],
         warnings: [],
       },
     }),
@@ -228,7 +228,7 @@ test('list mode exits non-zero when config fails to load', async () => {
   assert.equal(result.exitCode, 1);
   assert.equal(guard.calls.buildListPayload.length, 0);
   assert.equal(stdout.text(), '');
-  assert.match(stderr.text(), /No cliguard config file was found\./);
+  assert.match(stderr.text(), /No config file was found\./);
 });
 
 test('execute mode streams output and forwards child exit code', async () => {
@@ -284,7 +284,7 @@ test('execute mode maps denials to exit 126 with a clear stderr message', async 
 
   assert.equal(result.exitCode, 126);
   assert.equal(stdout.text(), '');
-  assert.match(stderr.text(), /cliguard: denied 'gh pr create --title test' — 'pr create' is not in the allow list for 'gh'\./);
+  assert.match(stderr.text(), /caprail-cli: denied 'gh pr create --title test' — 'pr create' is not in the allow list for 'gh'\./);
 });
 
 test('execute mode maps audit and execution failures to exit 1', async () => {

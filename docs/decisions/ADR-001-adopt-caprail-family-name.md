@@ -7,7 +7,7 @@ Accepted
 2026-04-18
 
 ## Context
-This repo started with `cliguard` as a working name for the first CLI-focused guard product. That name is too narrow for the broader architecture now described in `SPEC.md`:
+This repo started with `cliguard` as a working name for the first CLI-focused guard product. That name was too narrow for the broader architecture now described in `SPEC.md`:
 
 - multiple **guard** packages (`guard-cli`, `guard-files`, `guard-ui`, ...)
 - multiple **transport** packages (`transport-argv`, `transport-http`, `transport-mcp`, ...)
@@ -45,7 +45,7 @@ Examples:
 - `@caprail/cli-http`
 - `@caprail/files-http`
 
-`cliguard` and `cliguard-http` remain temporary codenames or compatibility aliases during design and migration work, but they are not the long-term family identity.
+The working name `cliguard` has been fully retired. All code, config paths, and documentation now use Caprail naming exclusively.
 
 ## Availability checks at decision time
 Initial naming checks performed on 2026-04-18 found no conflicting public presence in the places most important to this project:
@@ -79,5 +79,4 @@ Examples considered in discussion included names emphasizing gates, security, or
 ## Consequences
 - The workspace structure can cleanly separate `guards/`, `transports/`, and `products/` while keeping package names obvious.
 - Future additions such as `@caprail/transport-mcp` and `@caprail/guard-files` feel like natural extensions of the same family.
-- Documentation, examples, and eventual publication should move toward `caprail` naming rather than baking in `cliguard`.
-- A compatibility and migration story may be needed if any early users/scripts adopt the `cliguard` binary names before the rename is completed.
+- Documentation, examples, and publication use `caprail` naming exclusively.

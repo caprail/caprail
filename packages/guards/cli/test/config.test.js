@@ -35,7 +35,7 @@ test('resolution prefers explicit config path over env and defaults', () => {
   const result = resolveConfigPath({
     configPath: explicitPath,
     env: {
-      CLIGUARD_CONFIG: envPath,
+      CAPRAIL_CLI_CONFIG: envPath,
       XDG_CONFIG_HOME: join(tempDir, 'xdg'),
     },
     platform: 'linux',
@@ -50,14 +50,14 @@ test('resolution prefers explicit config path over env and defaults', () => {
 test('resolution falls back to env config path before platform defaults', () => {
   const tempDir = createTempDir();
   const envPath = join(tempDir, 'env.yaml');
-  const defaultPath = join(tempDir, 'xdg', 'cliguard', 'config.yaml');
+  const defaultPath = join(tempDir, 'xdg', 'caprail-cli', 'config.yaml');
 
   writeConfigFile(envPath, 'tools: {}\n');
   writeConfigFile(defaultPath, 'tools: {}\n');
 
   const result = resolveConfigPath({
     env: {
-      CLIGUARD_CONFIG: envPath,
+      CAPRAIL_CLI_CONFIG: envPath,
       XDG_CONFIG_HOME: join(tempDir, 'xdg'),
     },
     platform: 'linux',
@@ -72,7 +72,7 @@ test('resolution falls back to env config path before platform defaults', () => 
 test('resolution uses linux default config paths without cwd lookup', () => {
   const tempDir = createTempDir();
   const xdgHome = join(tempDir, 'xdg');
-  const defaultPath = join(xdgHome, 'cliguard', 'config.yaml');
+  const defaultPath = join(xdgHome, 'caprail-cli', 'config.yaml');
 
   writeConfigFile(defaultPath, 'tools: {}\n');
 
@@ -100,8 +100,8 @@ test('resolution returns win32 default path candidates in order', () => {
   });
 
   assert.deepEqual(paths, [
-    join(tempDir, 'program-data', 'cliguard', 'config.yaml'),
-    join(tempDir, 'app-data', 'cliguard', 'config.yaml'),
+    join(tempDir, 'program-data', 'caprail-cli', 'config.yaml'),
+    join(tempDir, 'app-data', 'caprail-cli', 'config.yaml'),
   ]);
 });
 
@@ -153,7 +153,7 @@ tools:
 test('parse preserves raw policy token lists for later matcher work', () => {
   const result = parseConfig(`
 settings:
-  audit_log: /var/log/cliguard/audit.log
+  audit_log: /var/log/caprail-cli/audit.log
 tools:
   gh:
     binary: /usr/bin/gh
@@ -171,7 +171,7 @@ tools:
   assert.deepEqual(result.config.tools.gh.allow, ['pr list', 'repo view']);
   assert.deepEqual(result.config.tools.gh.deny, ['pr create']);
   assert.deepEqual(result.config.tools.gh.denyFlags, ['--web']);
-  assert.equal(result.config.settings.auditLog, '/var/log/cliguard/audit.log');
+  assert.equal(result.config.settings.auditLog, '/var/log/caprail-cli/audit.log');
 });
 
 test('load returns a structured error for a missing config file', () => {

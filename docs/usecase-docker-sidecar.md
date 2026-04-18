@@ -4,11 +4,11 @@
 
 Openclaw (an AI coding agent) runs in a Docker container. It needs access to authenticated vendor CLIs (`gh`, `gws`) but must not have direct access to the credentials or the ability to run arbitrary commands against those CLIs.
 
-This is the strongest deployment model for cliguard:
+This is the strongest deployment model for Caprail:
 - the agent container has no vendor CLI binaries
 - the agent container has no credential mounts
 - policy config is mounted read-only into the sidecar only
-- cliguard-http exposes a small, authenticated API for allowed commands
+- `caprail-cli-http` exposes a small, authenticated API for allowed commands
 
 ## Architecture
 
@@ -16,12 +16,12 @@ This is the strongest deployment model for cliguard:
 ┌─────────────────────────┐         ┌───────────────────────────────┐
 │ openclaw container      │         │ sidecar container             │
 │                         │         │                               │
-│  Agent runtime          │  HTTP   │  cliguard-http (:8100)        │
+│  Agent runtime          │  HTTP   │  caprail-cli-http (:8100)     │
 │  (has shell, no creds,  │────────▶│    ├── POST /exec             │
 │   no vendor CLIs)       │         │    ├── GET  /discover         │
 │                         │         │    └── GET  /health           │
 │                         │         │                               │
-│                         │         │  cliguard (CLI)               │
+│                         │         │  caprail-cli (CLI)            │
 │                         │         │    └── policy from config.yaml│
 │                         │         │                               │
 │                         │         │  gh  (authenticated)          │
@@ -36,31 +36,31 @@ This is the strongest deployment model for cliguard:
 | Layer | What it does |
 |-------|-------------|
 | **Docker network** | Only the openclaw container can reach the sidecar. No external access. |
-| **cliguard-http auth** | Bearer token or Docker-network-only (`--no-auth`). Prevents anything other than the expected caller from invoking CLIs. |
-| **cliguard policy** | Token-based command allow/deny matching. Even if the agent can reach the sidecar, it can only run allowed command shapes. |
+| **caprail-cli-http auth** | Bearer token or Docker-network-only (`--no-auth`). Prevents anything other than the expected caller from invoking CLIs. |
+| **Caprail policy** | Token-based command allow/deny matching. Even if the agent can reach the sidecar, it can only run allowed command shapes. |
 | **Credential isolation** | Credentials live in the sidecar container only. Openclaw container has no creds, no vendor CLI binaries, no way to make direct API calls. |
 | **Config isolation** | Config file is mounted read-only into the sidecar and is not mounted into the agent container. |
 
-The security boundary is the Docker network isolation + credential isolation. Cliguard adds policy granularity within that boundary.
+The security boundary is the Docker network isolation + credential isolation. Caprail adds policy granularity within that boundary.
 
 ### Important limitation
 
-Cliguard constrains **verbs, not scope**. It can allow `gh pr view` and deny `gh pr create`, but it does not inherently limit which repos, orgs, or resource IDs those commands target.
+Caprail constrains **verbs, not scope**. It can allow `gh pr view` and deny `gh pr create`, but it does not inherently limit which repos, orgs, or resource IDs those commands target.
 
 ## Agent Workflow
 
 1. **Discovery:** Agent calls `GET /discover` at session start. Receives a manifest of available tools and allowed commands.
 2. **Execution:** Agent calls `POST /exec` with tool name and `args` token array.
-3. **Non-interactive execution:** Sidecar runs `cliguard --config /etc/cliguard/config.yaml -- <tool> ...` with stdin disabled, pager suppression, timeout, and output cap.
+3. **Non-interactive execution:** Sidecar runs `caprail-cli --config /etc/caprail-cli/config.yaml -- <tool> ...` with stdin disabled, pager suppression, timeout, and output cap.
 4. **Denial handling:** If the command is denied, agent receives a 403 with a clear structured message.
 5. **Normal command failures:** If the command is allowed but the vendor CLI exits non-zero, the wrapper still returns HTTP 200 with the vendor exit code in the body.
 
 ## Example: Openclaw reading PRs and drafting emails
 
 ```yaml
-# /etc/cliguard/config.yaml (mounted read-only into sidecar)
+# /etc/caprail-cli/config.yaml (mounted read-only into sidecar)
 settings:
-  audit_log: /var/log/cliguard/audit.log
+  audit_log: /var/log/caprail-cli/audit.log
   audit_format: jsonl
 
 tools:
@@ -99,25 +99,25 @@ services:
       - agent-net
     # No credential mounts. No vendor CLI binaries.
 
-  cliguard-sidecar:
-    image: cliguard-sidecar:latest  # Custom image with gh, gws, cliguard, cliguard-http
+  caprail-sidecar:
+    image: caprail-sidecar:latest  # Custom image with gh, gws, caprail-cli, caprail-cli-http
     networks:
       - agent-net
     ports: []                        # No host-exposed ports
     volumes:
-      - ./cliguard.yaml:/etc/cliguard/config.yaml:ro
-      - ./audit:/var/log/cliguard
+      - ./config.yaml:/etc/caprail-cli/config.yaml:ro
+      - ./audit:/var/log/caprail-cli
       # Credential mounts (or baked into image):
       - ~/.config/gh:/root/.config/gh:ro
       - ~/.config/gws:/root/.config/gws:ro
     environment:
-      - CLIGUARD_HTTP_TOKEN=<shared-secret>
+      - CAPRAIL_CLI_HTTP_TOKEN=<shared-secret>
     command:
       [
-        "cliguard-http",
-        "--config", "/etc/cliguard/config.yaml",
+        "caprail-cli-http",
+        "--config", "/etc/caprail-cli/config.yaml",
         "--port", "8100",
-        "--token", "${CLIGUARD_HTTP_TOKEN}",
+        "--token", "${CAPRAIL_CLI_HTTP_TOKEN}",
         "--timeout-ms", "30000",
         "--max-output-bytes", "1048576"
       ]
@@ -159,8 +159,8 @@ Because `args` is an array, the wrapper avoids brittle string splitting and pres
 | Agent reads credential files | Credentials not mounted in openclaw container |
 | Agent changes policy config | Config mounted read-only and not exposed to agent container |
 | Agent curls vendor API with stolen token | No token available in openclaw container |
-| Agent calls sidecar with disallowed command | cliguard policy denies it |
+| Agent calls sidecar with disallowed command | Caprail policy denies it |
 | Sidecar audit logs leak into command stderr | Audit log sink is separate from command IO |
 | External attacker calls sidecar | Docker internal network and optional bearer token |
 
-**This is the strongest deployment model.** The main remaining risks are outside cliguard itself: container escape, overly broad allowed verbs, or credentials already having too much power.
+**This is the strongest deployment model.** The main remaining risks are outside Caprail itself: container escape, overly broad allowed verbs, or credentials already having too much power.

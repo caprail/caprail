@@ -1,4 +1,4 @@
-# Spec: cliguard
+# Spec: Caprail
 
 ## Objective
 
@@ -12,19 +12,19 @@ See [docs/usecase-docker-sidecar.md](docs/usecase-docker-sidecar.md) and [docs/u
 
 ### Transport-agnostic
 
-Cliguard is a CLI tool. It takes process argv, checks policy, and either executes or rejects. It does not know or care how it was invoked — by a Pi custom tool, by an HTTP wrapper, by an MCP server, by `docker exec`, or by a human typing in a terminal.
+Caprail's CLI guard is a CLI tool. It takes process argv, checks policy, and either executes or rejects. It does not know or care how it was invoked — by a Pi custom tool, by an HTTP wrapper, by an MCP server, by `docker exec`, or by a human typing in a terminal.
 
 The **guard design is the core product idea**. Transport is an adapter choice.
 
-Exposing cliguard over HTTP, MCP, gRPC, or any other transport is the job of a separate, thin wrapper. This repo includes `cliguard-http` as one such wrapper. MCP-facing wrappers can be added later without changing the core guard logic.
+Exposing the guard over HTTP, MCP, gRPC, or any other transport is the job of a separate, thin wrapper. This repo includes `caprail-cli-http` as one such wrapper. MCP-facing wrappers can be added later without changing the core guard logic.
 
 ### Policy, not security boundary
 
-The security boundary is the execution environment — Docker network isolation, agent framework tool restrictions, filesystem permissions. Cliguard's role is **policy enforcement within** that boundary. It turns coarse "has access to `gh`" into finer-grained "can run these read-oriented subcommands but not others."
+The security boundary is the execution environment — Docker network isolation, agent framework tool restrictions, filesystem permissions. Caprail's role is **policy enforcement within** that boundary. It turns coarse "has access to `gh`" into finer-grained "can run these read-oriented subcommands but not others."
 
 ### Verbs, not scope
 
-Cliguard constrains **which command shapes and verbs** may run. It does **not** provide true resource scoping.
+Caprail constrains **which command shapes and verbs** may run. It does **not** provide true resource scoping.
 
 Examples of what v1 can express well:
 - Allow `gh pr list`
@@ -40,13 +40,11 @@ Examples of what v1 does **not** express:
 
 ### Fail closed
 
-If config is missing, malformed, or ambiguous, cliguard denies. No silent fallthrough to allow.
+If config is missing, malformed, or ambiguous, Caprail denies. No silent fallthrough to allow.
 
 ## Family of host capability guards
 
-This repo starts with `cliguard`, but the broader pattern is a **family of host capability guards**: small, narrow, transport-agnostic services that expose one host or sidecar capability to an agent through an authenticated, auditable interface.
-
-`cliguard` should be treated as a **working codename for the first CLI-focused member**, not the long-term family brand. The package layout and naming strategy should therefore be designed around a reusable family name, with the current `cliguard` / `cliguard-http` examples understood as temporary placeholders.
+This repo starts with the CLI guard, but the broader pattern is a **family of host capability guards**: small, narrow, transport-agnostic services that expose one host or sidecar capability to an agent through an authenticated, auditable interface.
 
 The key idea to preserve is:
 
@@ -56,7 +54,7 @@ The key idea to preserve is:
 > HTTP, MCP, stdio, or other transports are adapters layered on top.
 
 Current member:
-- **`cliguard`** — token-based policy enforcement for host or sidecar CLIs
+- **`@caprail/guard-cli`** — token-based policy enforcement for host or sidecar CLIs
 
 Exploration candidates:
 - **`host-files-http`** — read-only access to allowlisted host files and log folders
@@ -90,7 +88,7 @@ core guard -> transport adapter (HTTP, MCP, stdio, ...) -> agent/client
 ```
 
 Examples:
-- `cliguard` + `cliguard-http` now, `cliguard-mcp` later
+- `@caprail/cli` + `@caprail/cli-http` now, `@caprail/cli-mcp` later
 - `host-files` core later, with `host-files-http` first and `host-files-mcp` as an optional follow-on
 - `host-ui` core later, with `host-ui-http` first and `host-ui-mcp` if MCP becomes the better integration surface
 
@@ -99,7 +97,7 @@ Examples:
 This still aligns with the Docker sidecar approach.
 
 - If a capability can live entirely inside a container, prefer the **sidecar model**.
-  - Example: `cliguard-http` running next to authenticated vendor CLIs inside a sidecar.
+  - Example: `caprail-cli-http` running next to authenticated vendor CLIs inside a sidecar.
 - If a capability is inherently host-local, expose it through a **host wrapper** with explicit auth, fixed config, and host-level isolation.
   - Examples: host log folders, Windows desktop UI automation, browser-backed host auth contexts.
 
@@ -116,7 +114,7 @@ Only the location of the guarded capability changes.
 - Authentication / credential management
 - Output filtering or redaction
 - Network-level controls
-- Agent-framework-specific integration (cliguard is framework-agnostic)
+- Agent-framework-specific integration (Caprail is framework-agnostic)
 - Resource/value scoping such as repo allowlists or numeric bounds
 - Full vendor-specific CLI parsing
 
@@ -168,11 +166,8 @@ Concrete examples:
 - prefer **self-evident names** over clever names for subpackages
 - use capability nouns for guards (`cli`, `files`, `ui`)
 - use protocol/runtime nouns for transports (`argv`, `http`, `mcp`)
-- keep `cliguard` and `cliguard-http` as **temporary codenames or compatibility aliases** during the design phase only
-- do not hard-code the old name into the workspace layout or package boundaries
+- do not hard-code legacy names into the workspace layout or package boundaries
 - before publishing, reserve the chosen npm scope and confirm there are no naming/trademark conflicts
-
-For readability, the rest of this spec continues to use the current working example names `cliguard` and `cliguard-http` in command examples. Structurally, those should be treated as **product packages composed from a guard package plus a transport package**, not as the only two first-class packages in the repo.
 
 ## Repository Structure
 
@@ -249,7 +244,7 @@ cli-whitelist-wrapper/
 │   │   │   ├── README.md
 │   │   │   ├── docs/
 │   │   │   ├── bin/
-│   │   │   │   └── caprail-cli.js        # Working example today: cliguard
+│   │   │   │   └── caprail-cli.js
 │   │   │   ├── src/
 │   │   │   │   └── main.js               # Composes guard-cli + transport-argv
 │   │   │   ├── test/
@@ -259,7 +254,7 @@ cli-whitelist-wrapper/
 │   │   │   ├── README.md
 │   │   │   ├── docs/
 │   │   │   ├── bin/
-│   │   │   │   └── caprail-cli-http.js   # Working example today: cliguard-http
+│   │   │   │   └── caprail-cli-http.js
 │   │   │   ├── src/
 │   │   │   │   └── main.js               # Composes guard-cli + transport-http
 │   │   │   ├── test/
@@ -323,19 +318,19 @@ Install:                  npm install
 Test all:                 npm test --workspaces
 Lint all:                 npm run lint --workspaces
 
-# Working product example: cliguard (`guard-cli` + `transport-argv`)
-Run:                      cliguard --config <path> -- <tool> [args...]
-Explain mode:             cliguard --config <path> --explain -- <tool> [args...]
-Explain mode (JSON):      cliguard --config <path> --explain --json -- <tool> [args...]
-Validate config:          cliguard --config <path> --validate
-Validate config (JSON):   cliguard --config <path> --validate --json
-List permissions:         cliguard --config <path> --list [tool]
-List permissions (JSON):  cliguard --config <path> --list [tool] --json
+# Product: caprail-cli (`guard-cli` + `transport-argv`)
+Run:                      caprail-cli --config <path> -- <tool> [args...]
+Explain mode:             caprail-cli --config <path> --explain -- <tool> [args...]
+Explain mode (JSON):      caprail-cli --config <path> --explain --json -- <tool> [args...]
+Validate config:          caprail-cli --config <path> --validate
+Validate config (JSON):   caprail-cli --config <path> --validate --json
+List permissions:         caprail-cli --config <path> --list [tool]
+List permissions (JSON):  caprail-cli --config <path> --list [tool] --json
 
-# Working product example: cliguard-http (`guard-cli` + `transport-http`)
-Start server:             cliguard-http --config <path> --port 8100 --token <secret>
-Start (no auth):          cliguard-http --config <path> --port 8100 --no-auth
-Optional limits:          cliguard-http --config <path> --timeout-ms 30000 --max-output-bytes 1048576
+# Product: caprail-cli-http (`guard-cli` + `transport-http`)
+Start server:             caprail-cli-http --config <path> --port 8100 --token <secret>
+Start (no auth):          caprail-cli-http --config <path> --port 8100 --no-auth
+Optional limits:          caprail-cli-http --config <path> --timeout-ms 30000 --max-output-bytes 1048576
 ```
 
 `--config` is the recommended production mode for every agent integration. Environment or default-path lookup exists for local/manual use, but wrappers should pin policy explicitly.
@@ -344,7 +339,7 @@ For the argv transport, execution and explain modes require a `--` separator. Al
 
 ---
 
-# Product: cliguard (`guard-cli` over argv)
+# Product: caprail-cli (`guard-cli` over argv)
 
 ## Configuration
 
@@ -353,10 +348,10 @@ Single YAML file.
 ### Resolution order
 
 1. `--config <path>` CLI flag
-2. `CLIGUARD_CONFIG` environment variable
+2. `CAPRAIL_CLI_CONFIG` environment variable
 3. Platform default path:
-   - **Windows:** `%ProgramData%\cliguard\config.yaml`, then `%AppData%\cliguard\config.yaml`
-   - **Linux/macOS:** `$XDG_CONFIG_HOME/cliguard/config.yaml`, then `~/.config/cliguard/config.yaml`
+   - **Windows:** `%ProgramData%\caprail-cli\config.yaml`, then `%AppData%\caprail-cli\config.yaml`
+   - **Linux/macOS:** `$XDG_CONFIG_HOME/caprail-cli/config.yaml`, then `~/.config/caprail-cli/config.yaml`
 
 **No current-working-directory lookup.** Agent-accessible workspace config files are too easy to shadow or tamper with.
 
@@ -366,8 +361,8 @@ Single YAML file.
 >
 > Good examples:
 > - A read-only mount inside a sidecar container, not mounted into the agent container
-> - `%ProgramData%\cliguard\config.yaml` on Windows with restrictive ACLs
-> - `/etc/cliguard/config.yaml` or an XDG config path owned by a separate service account
+> - `%ProgramData%\caprail-cli\config.yaml` on Windows with restrictive ACLs
+> - `/etc/caprail-cli/config.yaml` or an XDG config path owned by a separate service account
 >
 > Bad examples:
 > - The repo workspace
@@ -377,11 +372,11 @@ Single YAML file.
 ### Format
 
 ```yaml
-# cliguard.yaml
+# config.yaml
 
 settings:
-  audit_log: /var/log/cliguard/audit.log   # file path | none
-  audit_format: jsonl                      # text | jsonl
+  audit_log: /var/log/caprail-cli/audit.log   # file path | none
+  audit_format: jsonl                          # text | jsonl
 
 tools:
   gh:
@@ -441,7 +436,7 @@ Quotes inside config entries are treated as literal characters, not shell syntax
 Given invocation:
 
 ```text
-cliguard --config config.yaml -- gh --repo org/repo pr list --state open --json title,url
+caprail-cli --config config.yaml -- gh --repo org/repo pr list --state open --json title,url
 ```
 
 1. **Extract tool name:** `gh`
@@ -494,7 +489,7 @@ This avoids brittle string-prefix logic and makes matching rules explicit:
 ### Invocation
 
 ```text
-cliguard --config <path> -- <tool> [subcommand...] [flags...] [positional-args...]
+caprail-cli --config <path> -- <tool> [subcommand...] [flags...] [positional-args...]
 ```
 
 For execution mode, the `--` separator is required. Everything after `--` is interpreted as command-token input, with the first token taken as `<tool>` and the remaining tokens passed to the real binary if allowed.
@@ -513,18 +508,18 @@ Default execution mode is **non-interactive**:
   - `TERM=dumb`
 - If the vendor CLI prompts for input anyway, it will see EOF / non-interactive execution and fail; that failure is returned as normal command stderr/exit code
 
-`cliguard` itself does not buffer large outputs in execution mode. Buffering, truncation, and timeouts are wrapper concerns.
+`caprail-cli` itself does not buffer large outputs in execution mode. Buffering, truncation, and timeouts are wrapper concerns.
 
 ### Rejection
 
-1. Prints to stderr: `cliguard: denied 'gh pr create --title test' — 'pr create' is not in the allow list for 'gh'`
+1. Prints to stderr: `caprail-cli: denied 'gh pr create --title test' — 'pr create' is not in the allow list for 'gh'`
 2. Exits with code **126** (standard "command cannot execute")
 3. Writes an audit event to the configured audit sink
 
 ### Explain Mode
 
 ```text
-cliguard --config config.yaml --explain -- gh pr create --title test
+caprail-cli --config config.yaml --explain -- gh pr create --title test
 ```
 
 Plain-text output:
@@ -555,9 +550,9 @@ JSON output:
 ### List Mode
 
 ```text
-cliguard --config config.yaml --list
-cliguard --config config.yaml --list gh
-cliguard --config config.yaml --list --json
+caprail-cli --config config.yaml --list
+caprail-cli --config config.yaml --list gh
+caprail-cli --config config.yaml --list --json
 ```
 
 JSON output:
@@ -579,8 +574,8 @@ JSON output:
 ### Validate Mode
 
 ```text
-cliguard --config config.yaml --validate
-cliguard --config config.yaml --validate --json
+caprail-cli --config config.yaml --validate
+caprail-cli --config config.yaml --validate --json
 ```
 
 Checks:
@@ -615,7 +610,7 @@ JSON output:
 
 All invocations (allowed and denied) can be written to an audit sink.
 
-**Important:** audit logs are **separate from command stdout/stderr**. Cliguard never mixes audit entries into the wrapped command's output streams.
+**Important:** audit logs are **separate from command stdout/stderr**. The guard never mixes audit entries into the wrapped command's output streams.
 
 ### Sinks
 
@@ -636,14 +631,14 @@ All invocations (allowed and denied) can be written to an audit sink.
 
 ---
 
-# Product: cliguard-http (`guard-cli` over HTTP)
+# Product: caprail-cli-http (`guard-cli` over HTTP)
 
-A thin HTTP server that wraps cliguard for agent/container communication. On startup it validates the configured policy and refuses to start if the config is unreadable, invalid, or the audit sink cannot be opened.
+A thin HTTP server that wraps the CLI guard for agent/container communication. On startup it validates the configured policy and refuses to start if the config is unreadable, invalid, or the audit sink cannot be opened.
 
 ## Responsibilities
 
 1. Accept HTTP requests with tool name + argument token array
-2. Invoke `cliguard` as a subprocess with a fixed `--config` path
+2. Invoke the guard with a fixed `--config` path
 3. Return stdout/stderr/exit code as JSON
 4. Expose a discovery endpoint for agent/tool generation
 5. Enforce request authentication (unless explicitly disabled)
@@ -653,7 +648,7 @@ A thin HTTP server that wraps cliguard for agent/container communication. On sta
 
 ### `POST /exec`
 
-Execute a command through cliguard.
+Execute a command through the guard.
 
 ```http
 POST /exec
@@ -798,7 +793,7 @@ Default: if neither flag is provided, server refuses to start. Forces an explici
 
 ## Non-interactive behaviour
 
-`cliguard-http` always runs commands in non-interactive mode:
+`caprail-cli-http` always runs commands in non-interactive mode:
 - `stdin` is never forwarded
 - child stdout/stderr are captured separately
 - default timeout is **30000ms** (configurable via `--timeout-ms`)
@@ -806,7 +801,7 @@ Default: if neither flag is provided, server refuses to start. Forces an explici
 - if the child times out, it is terminated and a 504 response is returned
 - if output exceeds the cap, capture stops and a 413 response is returned
 
-## Non-goals for cliguard-http
+## Non-goals for caprail-cli-http
 
 - TLS (use Docker network isolation, host firewall rules, or a reverse proxy)
 - User management / multi-tenancy
@@ -853,7 +848,7 @@ import { resolve } from 'node:path';
 - Treat config entries as token sequences, not shell snippets
 - Keep audit logs separate from command stdout/stderr
 - Default to non-interactive execution
-- Exit 126 on denial (`cliguard`), 403 on denial (`cliguard-http`)
+- Exit 126 on denial (`caprail-cli`), 403 on denial (`caprail-cli-http`)
 
 **Ask first:**
 - Adding any dependency beyond `yaml`
@@ -870,12 +865,12 @@ import { resolve } from 'node:path';
 
 ## Success Criteria
 
-1. `cliguard --config <path> -- gh pr list --state open` executes and streams output
-2. `cliguard --config <path> -- gh pr create --title test` exits 126 with clear denial
-3. `cliguard --config <path> --explain --json -- gh pr create` prints structured matching output
-4. `cliguard --config <path> --list --json` shows permissions
-5. `cliguard --config <path> --validate --json` catches bad config
-6. `cliguard-http` serves `/exec`, `/discover`, `/health`
+1. `caprail-cli --config <path> -- gh pr list --state open` executes and streams output
+2. `caprail-cli --config <path> -- gh pr create --title test` exits 126 with clear denial
+3. `caprail-cli --config <path> --explain --json -- gh pr create` prints structured matching output
+4. `caprail-cli --config <path> --list --json` shows permissions
+5. `caprail-cli --config <path> --validate --json` catches bad config
+6. `caprail-cli-http` serves `/exec`, `/discover`, `/health`
 7. `/discover` returns the full tool/permission manifest from config plus execution limits
 8. Auth is enforced when configured; explicit opt-in for no-auth
 9. `guard-cli` adds no runtime dependencies beyond `yaml`; transports/products prefer built-ins unless there is a strong justification
@@ -886,7 +881,7 @@ import { resolve } from 'node:path';
 ## Resolved Questions
 
 1. **YAML dependency vs inline parser** — Using `yaml` package. Zero transitive deps, audit once.
-2. **Windows config path** — Prefer `%ProgramData%\cliguard\config.yaml` for host/service deployments; fall back to `%AppData%\cliguard\config.yaml` for per-user installs.
-3. **Should `cliguard-http` stream responses or buffer?** Buffer with explicit size cap in v1. Streaming can be added later if needed.
+2. **Windows config path** — Prefer `%ProgramData%\caprail-cli\config.yaml` for host/service deployments; fall back to `%AppData%\caprail-cli\config.yaml` for per-user installs.
+3. **Should `caprail-cli-http` stream responses or buffer?** Buffer with explicit size cap in v1. Streaming can be added later if needed.
 4. **Should `/discover` include example invocations?** Not in v1 — the allow list plus execution metadata is sufficient.
 5. **Should config be discovered from the working directory?** No. That is too easy for an agent to shadow or modify.

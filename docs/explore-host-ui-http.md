@@ -41,16 +41,16 @@ Not good:
 - "control whichever window currently has focus"
 - unrestricted keyboard/mouse macros
 
-## Why this should be separate from cliguard
+## Why this should be separate from the CLI guard
 
-`cliguard` is for tokenized CLI execution. Desktop UI automation needs a different model:
+The CLI guard (`@caprail/guard-cli`) is for tokenized CLI execution. Desktop UI automation needs a different model:
 - attach to one known process/window
 - target controls by automation identity
 - verify window ownership/focus
 - capture bounded screenshots
 - defend against accidental control of the wrong app
 
-That makes `host-ui-http` a separate member, not a `cliguard` mode.
+That makes `host-ui-http` a separate member, not a CLI guard mode.
 
 ## Design shape
 

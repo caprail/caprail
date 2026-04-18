@@ -3,6 +3,7 @@
   "private": true,
   "workspaces": [
     "packages/guards/cli",
-    "packages/transports/argv"
+    "packages/transports/argv",
+    "packages/products/cli"
   ]
 }

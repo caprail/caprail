@@ -1,13 +1,13 @@
-# Use Case: Pi in Docker on Windows 11, cliguard-http on the Host
+# Use Case: Pi in Docker on Windows 11, caprail-cli-http on the Host
 
 ## Context
 
-Pi runs inside a Windows Docker container rather than directly on the host. The host has authenticated vendor CLIs (`gh`, `az`, etc.) and browser-backed sessions. Cliguard runs on the host behind the thin HTTP wrapper, and Pi reaches it over a local host-to-container network path.
+Pi runs inside a Windows Docker container rather than directly on the host. The host has authenticated vendor CLIs (`gh`, `az`, etc.) and browser-backed sessions. Caprail runs on the host behind the thin HTTP wrapper, and Pi reaches it over a local host-to-container network path.
 
 This model is meant to improve on the earlier "Pi directly on the host" approach:
 - Pi shell execution stays in the container
 - vendor CLIs and credentials stay on the host
-- cliguard policy is enforced on the host, close to the real CLI binaries
+- Caprail policy is enforced on the host, close to the real CLI binaries
 - host access is exposed through narrow HTTP wrappers instead of direct host shell access
 
 It is still weaker than the full Docker sidecar model, but materially stronger than giving Pi direct host shell and broad host filesystem access.
@@ -20,8 +20,8 @@ It is still weaker than the full Docker sidecar model, but materially stronger t
 │                                                               │
 │  Vendor CLIs + credentials + browser sessions                │
 │                                                               │
-│  cliguard-http --config %ProgramData%\cliguard\config.yaml   │
-│     └── cliguard gh ... / az ...                             │
+│  caprail-cli-http --config %ProgramData%\caprail-cli\config.yaml│
+│     └── caprail-cli gh ... / az ...                          │
 │                                                               │
 │  Config + audit logs live outside any container mounts       │
 └───────────────────────────────────────────────────────────────┘
@@ -35,11 +35,11 @@ It is still weaker than the full Docker sidecar model, but materially stronger t
 │  Pi runtime                                                   │
 │   ├── read/edit/write tools → container-mounted workspace     │
 │   ├── bash tool           → container shell only              │
-│   └── gh/az tools         → POST /exec on host cliguard-http  │
+│   └── gh/az tools         → POST /exec on host caprail-cli-http│
 │                                                               │
 │  No vendor CLI binaries                                       │
 │  No host credential files                                     │
-│  No cliguard config mount                                     │
+│  No Caprail config mount                                      │
 └───────────────────────────────────────────────────────────────┘
 ```
 
@@ -50,7 +50,7 @@ Compared with a host-native Pi setup, this model reduces several bypass paths:
 - **No host shell access:** Pi's shell stays in the container.
 - **No direct host CLI access:** the agent cannot just run `gh` or `az` directly.
 - **No direct credential file access:** host credentials are not mounted into the container.
-- **Policy close to the executable:** cliguard runs on the host, where the real CLI and auth context already live.
+- **Policy close to the executable:** Caprail runs on the host, where the real CLI and auth context already live.
 - **Narrow host integration surface:** host capabilities are exposed through specific wrappers instead of broad host tool access.
 
 ## Security Model
@@ -58,34 +58,34 @@ Compared with a host-native Pi setup, this model reduces several bypass paths:
 | Layer | What it does |
 |-------|-------------|
 | **Container boundary** | Pi shell execution stays sandboxed in the container. |
-| **Host cliguard-http** | Exposes only a small authenticated API for selected vendor CLIs. |
-| **cliguard policy** | Enforces token-based allow/deny rules before launching the real host CLI. |
+| **Host caprail-cli-http** | Exposes only a small authenticated API for selected vendor CLIs. |
+| **Caprail policy** | Enforces token-based allow/deny rules before launching the real host CLI. |
 | **Host filesystem placement** | Config, audit logs, and credential files live outside mounted container paths. |
 | **Bearer token + host firewall** | Reduces the chance that anything other than the Pi container can reach the host wrapper. |
 
 ### Important limitation
 
-Cliguard constrains **verbs, not scope**. It can allow `az vm show` and deny `az vm delete`, but it does not inherently limit which subscription, resource group, or VM the allowed command targets.
+Caprail constrains **verbs, not scope**. It can allow `az vm show` and deny `az vm delete`, but it does not inherently limit which subscription, resource group, or VM the allowed command targets.
 
 ## Recommended host placement
 
 For this model, the host wrapper should use an explicit config path outside any path visible to the container.
 
 Recommended Windows locations:
-- **Preferred:** `%ProgramData%\cliguard\config.yaml`
-- **Per-user fallback:** `%AppData%\cliguard\config.yaml`
-- **Audit log:** `%LocalAppData%\cliguard\audit.log`
+- **Preferred:** `%ProgramData%\caprail-cli\config.yaml`
+- **Per-user fallback:** `%AppData%\caprail-cli\config.yaml`
+- **Audit log:** `%LocalAppData%\caprail-cli\audit.log`
 
 Guidance:
 - do **not** place config in the repo workspace
 - do **not** share the config path as a Docker volume with the Pi container
 - lock down the file with Windows ACLs so the Pi host user/container mapping cannot modify it
-- always pass `--config <path>` explicitly to `cliguard-http`
+- always pass `--config <path>` explicitly to `caprail-cli-http`
 
 ## Host wrapper example
 
 ```text
-cliguard-http --config "C:\ProgramData\cliguard\config.yaml" --port 8100 --token "<shared-secret>" --timeout-ms 30000 --max-output-bytes 1048576
+caprail-cli-http --config "C:\ProgramData\caprail-cli\config.yaml" --port 8100 --token "<shared-secret>" --timeout-ms 30000 --max-output-bytes 1048576
 ```
 
 Operational note: because the service must be reachable from the container, use a local firewall rule to restrict access to the Docker Desktop / Hyper-V network rather than exposing it broadly on the LAN.
@@ -93,9 +93,9 @@ Operational note: because the service must be reachable from the container, use 
 ## Example config
 
 ```yaml
-# C:\ProgramData\cliguard\config.yaml
+# C:\ProgramData\caprail-cli\config.yaml
 settings:
-  audit_log: C:\Users\<user>\AppData\Local\cliguard\audit.log
+  audit_log: C:\Users\<user>\AppData\Local\caprail-cli\audit.log
   audit_format: jsonl
 
 tools:
@@ -178,8 +178,8 @@ The important part is the parameter type:
 2. Extension calls `GET /discover` on the host wrapper.
 3. Extension exposes `gh`, `az`, etc. to the agent with descriptions synthesized from the live policy.
 4. Agent invokes `gh` with `args: ["pr", "list", "--repo", "org/repo"]`.
-5. Host wrapper runs `cliguard --config C:\ProgramData\cliguard\config.yaml -- gh pr list --repo org/repo`.
-6. Cliguard checks policy and launches the real host CLI only if allowed.
+5. Host wrapper runs `caprail-cli --config C:\ProgramData\caprail-cli\config.yaml -- gh pr list --repo org/repo`.
+6. Caprail checks policy and launches the real host CLI only if allowed.
 7. Wrapper returns structured JSON with `stdout`, `stderr`, and `exit_code`.
 
 ## API error behaviour in practice
@@ -200,9 +200,9 @@ The important part is the parameter type:
 |--------|--------|
 | Agent runs `gh` directly via shell | Blocked: shell is in container, no host `gh` available |
 | Agent reads host credential files | Blocked if those host paths are not mounted into the container |
-| Agent edits cliguard config | Blocked if config lives outside mounted container paths and wrapper uses fixed `--config` |
-| Agent passes malicious args to cliguard | Blocked by `spawn` with `shell: false` and token-array transport |
-| Agent hits host wrapper with disallowed command | Blocked by cliguard policy |
+| Agent edits Caprail config | Blocked if config lives outside mounted container paths and wrapper uses fixed `--config` |
+| Agent passes malicious args to Caprail | Blocked by `spawn` with `shell: false` and token-array transport |
+| Agent hits host wrapper with disallowed command | Blocked by Caprail policy |
 | External process hits host wrapper | Reduced by bearer token + host firewall scoping |
 
 ## Residual Risks
@@ -213,11 +213,11 @@ Residual concerns include:
 - host wrapper exposure is broader than an internal-only sidecar unless the host firewall is configured carefully
 - the host still holds real credentials and real vendor CLIs
 - if sensitive host paths are accidentally mounted into the container, the agent may still reach them
-- container escape or host compromise bypasses cliguard entirely
+- container escape or host compromise bypasses Caprail entirely
 
 Still, with:
 - Pi in a container
-- host CLIs behind `cliguard-http`
+- host CLIs behind `caprail-cli-http`
 - explicit `--config`
 - config outside agent-visible paths
 - no sensitive host mounts into the container

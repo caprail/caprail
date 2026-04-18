@@ -19,17 +19,17 @@ export function getDefaultConfigPaths({
   if (platform === 'win32') {
     return [env.ProgramData, env.AppData]
       .filter(Boolean)
-      .map((basePath) => join(basePath, 'cliguard', 'config.yaml'));
+      .map((basePath) => join(basePath, 'caprail-cli', 'config.yaml'));
   }
 
   const paths = [];
 
   if (env.XDG_CONFIG_HOME) {
-    paths.push(join(env.XDG_CONFIG_HOME, 'cliguard', 'config.yaml'));
+    paths.push(join(env.XDG_CONFIG_HOME, 'caprail-cli', 'config.yaml'));
   }
 
   if (homeDirectory) {
-    paths.push(join(homeDirectory, '.config', 'cliguard', 'config.yaml'));
+    paths.push(join(homeDirectory, '.config', 'caprail-cli', 'config.yaml'));
   }
 
   return paths;
@@ -49,10 +49,10 @@ export function resolveConfigPath({
     };
   }
 
-  if (env.CLIGUARD_CONFIG) {
+  if (env.CAPRAIL_CLI_CONFIG) {
     return {
       ok: true,
-      path: resolveConfigPathValue(env.CLIGUARD_CONFIG),
+      path: resolveConfigPathValue(env.CAPRAIL_CLI_CONFIG),
       source: 'env',
     };
   }
@@ -73,7 +73,7 @@ export function resolveConfigPath({
     ok: false,
     error: {
       code: 'config_not_found',
-      message: 'No cliguard config file was found in the configured resolution paths.',
+      message: 'No config file was found in the configured resolution paths.',
       candidates: defaultPaths,
     },
   };

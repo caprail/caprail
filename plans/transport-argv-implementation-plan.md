@@ -261,7 +261,7 @@ Document the package’s role, API, flag grammar, output semantics, and handoff 
 - [ ] `README.md` explains the transport boundary, supported modes, and how it composes with `@caprail/guard-cli`.
 - [ ] `docs/contract.md` documents parser grammar, flag ordering rules, output shapes, and exit-code mapping.
 - [ ] Docs clearly state that the executable belongs in `@caprail/cli`, not in the transport package itself.
-- [ ] Documentation uses Caprail naming consistently while acknowledging `cliguard` compatibility examples from the spec.
+- [ ] Documentation uses Caprail naming consistently.
 
 **Verification:**
 - [ ] Package dry-run succeeds: `npm pack --workspace @caprail/transport-argv --dry-run`

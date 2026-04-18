@@ -11,7 +11,7 @@ export function createMockGuard(overrides = {}) {
   };
 
   const config = overrides.config ?? {
-    source: { path: '/secure/cliguard/config.yaml', source: 'cli' },
+    source: { path: '/secure/caprail-cli/config.yaml', source: 'cli' },
     settings: {
       auditLog: 'none',
       auditFormat: 'jsonl',

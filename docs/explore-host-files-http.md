@@ -12,16 +12,16 @@ This is meant for cases where the useful data lives on the host:
 
 It is **not** a general filesystem server.
 
-## Why this should be separate from cliguard
+## Why this should be separate from the CLI guard
 
-`cliguard` is for argv-shaped CLI policy. File access has different security and API needs:
+The CLI guard (`@caprail/guard-cli`) is for argv-shaped CLI policy. File access has different security and API needs:
 - rooted path allowlists
 - canonical path checks
 - chunked reads and tailing
 - symlink/junction handling
 - file-size and traversal limits
 
-That makes `host-files-http` a sibling, not a sub-mode of `cliguard`.
+That makes `host-files-http` a sibling, not a sub-mode of the CLI guard.
 
 ## Design shape
 

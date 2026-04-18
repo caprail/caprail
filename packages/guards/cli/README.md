@@ -30,15 +30,15 @@ npm install @caprail/guard-cli
 
 Node 18+ is required.
 
-## Config compatibility note
+## Config resolution
 
-The package name uses the Caprail family naming, but the current config lookup remains aligned with the spec's existing `cliguard` compatibility surface:
+Config resolution follows this order:
 
-- `CLIGUARD_CONFIG`
-- `%ProgramData%\cliguard\config.yaml`
-- `%AppData%\cliguard\config.yaml`
-- `$XDG_CONFIG_HOME/cliguard/config.yaml`
-- `~/.config/cliguard/config.yaml`
+- `CAPRAIL_CLI_CONFIG`
+- `%ProgramData%\caprail-cli\config.yaml`
+- `%AppData%\caprail-cli\config.yaml`
+- `$XDG_CONFIG_HOME/caprail-cli/config.yaml`
+- `~/.config/caprail-cli/config.yaml`
 
 ## Example
 
@@ -50,7 +50,7 @@ import {
   executeGuardedCommand,
 } from '@caprail/guard-cli';
 
-const loaded = loadAndValidateConfig({ configPath: '/secure/cliguard/config.yaml' });
+const loaded = loadAndValidateConfig({ configPath: '/etc/caprail-cli/config.yaml' });
 
 if (!loaded.ok) {
   console.error(loaded.report);
