@@ -1,0 +1,8 @@
+{
+  "name": "cli-whitelist-wrapper",
+  "private": true,
+  "workspaces": [
+    "packages/cliguard",
+    "packages/cliguard-http"
+  ]
+}
