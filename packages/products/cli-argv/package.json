@@ -1,5 +1,5 @@
 {
-  "name": "@caprail/cli",
+  "name": "@caprail/cli-argv",
   "version": "0.1.0",
   "description": "Runnable argv product for Caprail CLI guard",
   "type": "module",

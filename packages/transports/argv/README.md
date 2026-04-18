@@ -68,7 +68,7 @@ The transport writes to the provided streams and returns structured results with
 
 This package is a **library transport**, not the runnable CLI product.
 
-The executable boundary belongs in `@caprail/cli`, which should stay thin:
+The executable boundary belongs in `@caprail/cli-argv`, which should stay thin:
 1. import guard + transport
 2. pass `process.argv.slice(2)` and stdio
 3. set `process.exitCode` from the returned `exitCode`

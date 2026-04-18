@@ -41,7 +41,7 @@ Examples:
 - `@caprail/guard-files`
 - `@caprail/transport-http`
 - `@caprail/transport-mcp`
-- `@caprail/cli`
+- `@caprail/cli-argv`
 - `@caprail/cli-http`
 - `@caprail/files-http`
 
@@ -50,7 +50,7 @@ The working name `cliguard` has been fully retired. All code, config paths, and 
 ## Availability checks at decision time
 Initial naming checks performed on 2026-04-18 found no conflicting public presence in the places most important to this project:
 
-- no published npm packages were found for `@caprail/cli` or `@caprail/guard-cli` via registry lookups
+- no published npm packages were found for `@caprail/cli-argv` or `@caprail/guard-cli` via registry lookups
 - no `caprail` GitHub user or organization was found (`https://github.com/caprail` and `https://github.com/orgs/caprail` both returned `404`)
 
 Operational note: npm scope ownership still must be claimed before first publish, and final trademark/domain checks should still be completed before public launch.

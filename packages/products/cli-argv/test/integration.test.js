@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { runCliProduct } from '@caprail/cli';
+import { runCliProduct } from '@caprail/cli-argv';
 
 import { createProductFixture } from './fixtures/create-product-fixture.js';
 
@@ -20,7 +20,7 @@ function createCaptureStream() {
   };
 }
 
-test('integration validate mode works through @caprail/cli public entrypoint', async () => {
+test('integration validate mode works through @caprail/cli-argv public entrypoint', async () => {
   const { configPath } = createProductFixture();
   const stdout = createCaptureStream();
   const stderr = createCaptureStream();

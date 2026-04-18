@@ -88,7 +88,7 @@ core guard -> transport adapter (HTTP, MCP, stdio, ...) -> agent/client
 ```
 
 Examples:
-- `@caprail/cli` + `@caprail/cli-http` now, `@caprail/cli-mcp` later
+- `@caprail/cli-argv` + `@caprail/cli-http` now, `@caprail/cli-mcp` later
 - `host-files` core later, with `host-files-http` first and `host-files-mcp` as an optional follow-on
 - `host-ui` core later, with `host-ui-http` first and `host-ui-mcp` if MCP becomes the better integration surface
 
@@ -156,7 +156,7 @@ Concrete examples:
 - `@caprail/transport-argv`
 - `@caprail/transport-http`
 - `@caprail/transport-mcp`
-- `@caprail/cli`
+- `@caprail/cli-argv`
 - `@caprail/cli-http`
 - `@caprail/files-http`
 - `@caprail/ui-mcp`
@@ -248,7 +248,7 @@ cli-whitelist-wrapper/
 │   │   │   ├── src/
 │   │   │   │   └── main.js               # Composes guard-cli + transport-argv
 │   │   │   ├── test/
-│   │   │   └── package.json              # @caprail/cli
+│   │   │   └── package.json              # @caprail/cli-argv
 │   │   │
 │   │   ├── cli-http/
 │   │   │   ├── README.md
@@ -837,7 +837,7 @@ import { resolve } from 'node:path';
 |-------|------|-------|
 | Unit | Guard config parsing, token normalization, deny precedence, execution rules | `packages/guards/cli/test/` |
 | Unit | Transport routing, auth checking, discovery, protocol mapping | `packages/transports/argv/test/`, `packages/transports/http/test/` |
-| Composition | Full local CLI product wiring (`guard-cli` + `transport-argv`) | `packages/products/cli/test/` |
+| Composition | Full local CLI product wiring (`guard-cli` + `transport-argv`) | `packages/products/cli-argv/test/` |
 | Composition | HTTP request → composed product → guard execution → response | `packages/products/cli-http/test/` |
 
 ## Boundaries

@@ -17,7 +17,7 @@ Current repo state is still design-only. The repository contains the spec, one a
 ### Out of scope
 - `@caprail/transport-argv`
 - `@caprail/transport-http`
-- Product packages such as `@caprail/cli` and `@caprail/cli-http`
+- Product packages such as `@caprail/cli-argv` and `@caprail/cli-http`
 - MCP transport work
 - Future `files` / `ui` guards
 

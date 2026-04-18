@@ -1,4 +1,4 @@
-# @caprail/cli usage
+# @caprail/cli-argv usage
 
 ## Invocation shape
 

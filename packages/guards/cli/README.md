@@ -20,7 +20,7 @@ Transport concerns stay outside the guard:
 - auth, timeout, and output-capture policies
 - process-to-exit-code or HTTP-status mapping
 
-Those belong in transport or product packages such as `@caprail/transport-argv`, `@caprail/transport-http`, `@caprail/cli`, and `@caprail/cli-http`.
+Those belong in transport or product packages such as `@caprail/transport-argv`, `@caprail/transport-http`, `@caprail/cli-argv`, and `@caprail/cli-http`.
 
 ## Install
 

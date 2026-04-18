@@ -1,6 +1,6 @@
-# @caprail/cli
+# @caprail/cli-argv
 
-`@caprail/cli` is the runnable local argv product in the Caprail package family.
+`@caprail/cli-argv` is the runnable local argv product in the Caprail package family.
 
 It is intentionally thin and composes:
 - `@caprail/guard-cli` (policy/config/matching/execution core)
@@ -11,7 +11,7 @@ This package owns only the executable boundary (`bin`, `process.argv`, stdio, an
 ## Install
 
 ```bash
-npm install @caprail/cli
+npm install @caprail/cli-argv
 ```
 
 Node 18+ is required.
@@ -51,7 +51,7 @@ caprail-cli --config ./config.yaml -- gh pr list
 ## Programmatic API
 
 ```js
-import { runCliProduct } from '@caprail/cli';
+import { runCliProduct } from '@caprail/cli-argv';
 
 const result = await runCliProduct({
   argv: ['--config', './config.yaml', '--validate', '--json'],
@@ -66,7 +66,7 @@ process.exitCode = result.exitCode;
 
 ## Layering and boundaries
 
-- Product (`@caprail/cli`): executable boundary and wiring
+- Product (`@caprail/cli-argv`): executable boundary and wiring
 - Guard (`@caprail/guard-cli`): policy semantics, config, matcher, execution, audit
 - Transport (`@caprail/transport-argv`): argv contract and mode behavior
 

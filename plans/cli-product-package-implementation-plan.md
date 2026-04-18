@@ -1,10 +1,10 @@
-# Implementation Plan: `@caprail/cli` Product Package
+# Implementation Plan: `@caprail/cli-argv` Product Package
 
 ## Overview
 
-Implement `@caprail/cli` as the thin, publishable argv product that composes `@caprail/guard-cli` with `@caprail/transport-argv` and exposes the executable boundary (`bin`, `process.argv`, stdio, exit code). The package should contain almost no policy logic of its own: guard behavior stays in `guard-cli`, and argv parsing/dispatch stays in `transport-argv`.
+Implement `@caprail/cli-argv` as the thin, publishable argv product that composes `@caprail/guard-cli` with `@caprail/transport-argv` and exposes the executable boundary (`bin`, `process.argv`, stdio, exit code). The package should contain almost no policy logic of its own: guard behavior stays in `guard-cli`, and argv parsing/dispatch stays in `transport-argv`.
 
-This plan focuses only on the `@caprail/cli` product package (the local/argv product in the family model). HTTP/MCP transports and other products remain out of scope.
+This plan focuses only on the `@caprail/cli-argv` product package (the local/argv product in the family model). HTTP/MCP transports and other products remain out of scope.
 
 ## Current Repo Snapshot
 
@@ -22,8 +22,8 @@ This plan focuses only on the `@caprail/cli` product package (the local/argv pro
 
 ### In scope
 
-- Workspace + package scaffolding for `packages/products/cli`
-- `@caprail/cli` package metadata and dependency wiring
+- Workspace + package scaffolding for `packages/products/cli-argv`
+- `@caprail/cli-argv` package metadata and dependency wiring
 - Product composition code that runs `runArgvTransport` with `@caprail/guard-cli`
 - Bin entrypoint(s) that map transport result to `process.exitCode`
 - Product-level tests (smoke + composition integration)
@@ -39,7 +39,7 @@ This plan focuses only on the `@caprail/cli` product package (the local/argv pro
 
 ## Architecture Decisions
 
-- **Keep product code thin.** `@caprail/cli` should wire guard + transport, not reimplement parser/matcher/validation/execution behavior.
+- **Keep product code thin.** `@caprail/cli-argv` should wire guard + transport, not reimplement parser/matcher/validation/execution behavior.
 - **Treat the bin as the runtime boundary.** `bin/caprail-cli.js` handles `process.argv`, stdio, env, platform, and `process.exitCode`; core logic remains in `src/main.js` for testability.
 - **Return results from `main`, set exits in bin.** Product internals should return `{ exitCode, ... }`; only bin sets process exit state.
 - **Ship `caprail-cli` only.** No compatibility aliases are needed — there is no prior product to migrate from.
@@ -63,31 +63,31 @@ workspace + product package scaffold
 
 ### Phase 1: Product Foundation
 
-## Task 1: Scaffold `packages/products/cli` and wire workspaces
+## Task 1: Scaffold `packages/products/cli-argv` and wire workspaces
 
 **Description:**  
-Create the product package structure and register it in root workspaces. Establish independent package metadata and scripts so `@caprail/cli` can be installed, tested, and packed on its own.
+Create the product package structure and register it in root workspaces. Establish independent package metadata and scripts so `@caprail/cli-argv` can be installed, tested, and packed on its own.
 
 **Acceptance criteria:**
-- [ ] Root workspaces include `packages/products/cli`.
-- [ ] `packages/products/cli/package.json` exists with `name: "@caprail/cli"`.
+- [ ] Root workspaces include `packages/products/cli-argv`.
+- [ ] `packages/products/cli-argv/package.json` exists with `name: "@caprail/cli-argv"`.
 - [ ] Package declares runtime dependencies on `@caprail/guard-cli` and `@caprail/transport-argv`.
 - [ ] Product package has `README.md`, `docs/`, `src/`, `bin/`, and `test/` directories.
 - [ ] A smoke test verifies public entrypoint resolution.
 
 **Verification:**
 - [ ] `npm install`
-- [ ] `node --test packages/products/cli/test/smoke.test.js`
-- [ ] `npm pack --workspace @caprail/cli --dry-run`
+- [ ] `node --test packages/products/cli-argv/test/smoke.test.js`
+- [ ] `npm pack --workspace @caprail/cli-argv --dry-run`
 
 **Dependencies:** None
 
 **Files likely touched:**
 - `package.json`
-- `packages/products/cli/package.json`
-- `packages/products/cli/src/index.js`
-- `packages/products/cli/test/smoke.test.js`
-- `packages/products/cli/README.md`
+- `packages/products/cli-argv/package.json`
+- `packages/products/cli-argv/src/index.js`
+- `packages/products/cli-argv/test/smoke.test.js`
+- `packages/products/cli-argv/README.md`
 
 **Estimated scope:** Medium
 
@@ -104,15 +104,15 @@ Add the product runtime function that calls `runArgvTransport` with the real gua
 - [ ] Runner returns the transport result object without mutating transport semantics.
 
 **Verification:**
-- [ ] `node --test packages/products/cli/test/main.test.js --test-name-pattern "composition|forwarding"`
+- [ ] `node --test packages/products/cli-argv/test/main.test.js --test-name-pattern "composition|forwarding"`
 - [ ] Manual dry run with mocked streams confirms no direct process termination in `src/main.js`
 
 **Dependencies:** Task 1
 
 **Files likely touched:**
-- `packages/products/cli/src/main.js`
-- `packages/products/cli/src/index.js`
-- `packages/products/cli/test/main.test.js`
+- `packages/products/cli-argv/src/main.js`
+- `packages/products/cli-argv/src/index.js`
+- `packages/products/cli-argv/test/main.test.js`
 
 **Estimated scope:** Small
 
@@ -137,15 +137,15 @@ Implement the runnable bin script(s) with shebang, call into `src/main.js`, writ
 - [ ] Unexpected uncaught errors are rendered to stderr and mapped to exit code `1`.
 
 **Verification:**
-- [ ] `node ./packages/products/cli/bin/caprail-cli.js --config <fixture> --validate --json`
-- [ ] `npm pack --workspace @caprail/cli --dry-run` includes bin files as expected
+- [ ] `node ./packages/products/cli-argv/bin/caprail-cli.js --config <fixture> --validate --json`
+- [ ] `npm pack --workspace @caprail/cli-argv --dry-run` includes bin files as expected
 
 **Dependencies:** Task 2
 
 **Files likely touched:**
-- `packages/products/cli/bin/caprail-cli.js`
-- `packages/products/cli/package.json`
-- `packages/products/cli/test/bin.test.js`
+- `packages/products/cli-argv/bin/caprail-cli.js`
+- `packages/products/cli-argv/package.json`
+- `packages/products/cli-argv/test/bin.test.js`
 
 **Estimated scope:** Small
 
@@ -162,15 +162,15 @@ Create composition tests that execute product entrypoints against fixture config
 - [ ] Fixture commands are cross-platform and deterministic (prefer Node-based fixture binaries/scripts).
 
 **Verification:**
-- [ ] `node --test packages/products/cli/test/*.test.js`
+- [ ] `node --test packages/products/cli-argv/test/*.test.js`
 - [ ] Manual check of denial output wording and exit behavior
 
 **Dependencies:** Tasks 2, 3
 
 **Files likely touched:**
-- `packages/products/cli/test/main.test.js`
-- `packages/products/cli/test/bin.test.js`
-- `packages/products/cli/test/fixtures/*`
+- `packages/products/cli-argv/test/main.test.js`
+- `packages/products/cli-argv/test/bin.test.js`
+- `packages/products/cli-argv/test/fixtures/*`
 
 **Estimated scope:** Medium
 
@@ -183,7 +183,7 @@ Create composition tests that execute product entrypoints against fixture config
 
 ### Phase 3: Documentation and Packaging Readiness
 
-## Task 5: Document `@caprail/cli` usage and package boundary
+## Task 5: Document `@caprail/cli-argv` usage and package boundary
 
 **Description:**  
 Write package docs that explain what the product owns, how it composes guard+transport, supported invocation forms, and compatibility naming guidance.
@@ -196,14 +196,13 @@ Write package docs that explain what the product owns, how it composes guard+tra
 
 **Verification:**
 - [ ] Manual review against `SPEC.md` command section and naming guidance
-- [ ] `npm pack --workspace @caprail/cli --dry-run` includes docs
+- [ ] `npm pack --workspace @caprail/cli-argv --dry-run` includes docs
 
 **Dependencies:** Tasks 3, 4
 
 **Files likely touched:**
-- `packages/products/cli/README.md`
-- `packages/products/cli/docs/usage.md`
-- `packages/products/cli/docs/compatibility.md` (optional)
+- `packages/products/cli-argv/README.md`
+- `packages/products/cli-argv/docs/usage.md`
 
 **Estimated scope:** Small
 
@@ -220,19 +219,19 @@ Confirm the product is publishable and consistent with family naming/structure c
 
 **Verification:**
 - [ ] `npm test --workspaces`
-- [ ] `npm pack --workspace @caprail/cli --dry-run`
+- [ ] `npm pack --workspace @caprail/cli-argv --dry-run`
 
 **Dependencies:** Tasks 1–5
 
 **Files likely touched:**
-- `packages/products/cli/package.json`
+- `packages/products/cli-argv/package.json`
 - `package.json`
 - `plans/` (follow-up tracking if needed)
 
 **Estimated scope:** Small
 
 ### Checkpoint: Complete
-- [ ] `@caprail/cli` is independently testable and packable
+- [ ] `@caprail/cli-argv` is independently testable and packable
 - [ ] Bin/runtime behavior is stable and documented
 - [ ] Product remains a thin composition layer
 - [ ] Ready for human review and implementation approval
@@ -259,4 +258,4 @@ Confirm the product is publishable and consistent with family naming/structure c
 
 ## Recommendation
 
-Approve this plan and implement `@caprail/cli` as a thin composition package now that guard and argv transport foundations are in place. Keep business logic in existing packages, keep the bin small and robust, and verify behavior with real end-to-end product tests built on deterministic fixtures.
+Approve this plan and implement `@caprail/cli-argv` as a thin composition package now that guard and argv transport foundations are in place. Keep business logic in existing packages, keep the bin small and robust, and verify behavior with real end-to-end product tests built on deterministic fixtures.

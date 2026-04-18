@@ -126,4 +126,4 @@ No guard internals should be imported.
 
 `@caprail/transport-argv` is not the CLI binary.
 
-The executable (`bin`, `--help`, `--version`, `process.exitCode` wiring) belongs in `@caprail/cli`.
+The executable (`bin`, `--help`, `--version`, `process.exitCode` wiring) belongs in `@caprail/cli-argv`.

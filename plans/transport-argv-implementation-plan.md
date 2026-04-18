@@ -36,7 +36,7 @@ This keeps the repo aligned with the family architecture established across the 
 
 ### Out of scope
 
-- `@caprail/cli` product package and executable bin
+- `@caprail/cli-argv` product package and executable bin
 - HTTP/MCP transports
 - auth, timeout, or output-capture policy
 - new guard behavior or matcher changes
@@ -232,7 +232,7 @@ Add the normal execution path for argv transport. This path should delegate allo
 ## Task 5: Add contract-level integration tests against the real guard package
 
 **Description:**  
-Prove that the transport’s injected command-token guard contract is sufficient by running the transport against the real `@caprail/guard-cli` public entrypoint and the committed example policy. This gives confidence before the future `@caprail/cli` product package is added and confirms `guard-cli` as the first concrete consumer of the transport.
+Prove that the transport’s injected command-token guard contract is sufficient by running the transport against the real `@caprail/guard-cli` public entrypoint and the committed example policy. This gives confidence before the future `@caprail/cli-argv` product package is added and confirms `guard-cli` as the first concrete consumer of the transport.
 
 **Acceptance criteria:**
 - [ ] At least one integration test uses the real `@caprail/guard-cli` import, not a mock.
@@ -255,12 +255,12 @@ Prove that the transport’s injected command-token guard contract is sufficient
 ## Task 6: Write package docs and the argv transport contract
 
 **Description:**  
-Document the package’s role, API, flag grammar, output semantics, and handoff to the future `@caprail/cli` product. This is where the transport’s ambiguous areas get made explicit so the eventual product stays thin.
+Document the package’s role, API, flag grammar, output semantics, and handoff to the future `@caprail/cli-argv` product. This is where the transport’s ambiguous areas get made explicit so the eventual product stays thin.
 
 **Acceptance criteria:**
 - [ ] `README.md` explains the transport boundary, supported modes, and how it composes with `@caprail/guard-cli`.
 - [ ] `docs/contract.md` documents parser grammar, flag ordering rules, output shapes, and exit-code mapping.
-- [ ] Docs clearly state that the executable belongs in `@caprail/cli`, not in the transport package itself.
+- [ ] Docs clearly state that the executable belongs in `@caprail/cli-argv`, not in the transport package itself.
 - [ ] Documentation uses Caprail naming consistently.
 
 **Verification:**
@@ -280,7 +280,7 @@ Document the package’s role, API, flag grammar, output semantics, and handoff 
 - [ ] Transport package is independently testable and packable
 - [ ] Parser and runner behavior are documented
 - [ ] The real guard package can drive the transport through its public contract
-- [ ] The repo is ready for the thin `@caprail/cli` product package
+- [ ] The repo is ready for the thin `@caprail/cli-argv` product package
 - [ ] Human review approves the transport contract before product work begins
 
 ## Risks and Mitigations
@@ -292,7 +292,7 @@ Document the package’s role, API, flag grammar, output semantics, and handoff 
 | Transport is treated as universal across all future guards | Medium | State explicitly that it targets command-token guards, keep `guard-cli` as the first consumer, and avoid forcing `guard-files`/`guard-ui` into this contract |
 | Library code becomes hard to test because it touches `process` directly | High | Return structured results and inject stdout/stderr/env instead of calling `process.exit()` |
 | Text output drifts from spec examples | Medium | Add renderer tests with expected output snapshots/fixtures |
-| Product responsibilities leak into transport | Medium | Keep bin/help/version work out of scope and hand off to `@caprail/cli` |
+| Product responsibilities leak into transport | Medium | Keep bin/help/version work out of scope and hand off to `@caprail/cli-argv` |
 | Workspace/package wiring churns again during product work | Low | Align package structure with spec now: `packages/transports/argv/...` |
 
 ## Parallelization Opportunities
@@ -303,11 +303,11 @@ Document the package’s role, API, flag grammar, output semantics, and handoff 
 
 ## Open Questions
 
-- Should `--help` and `--version` live in `@caprail/transport-argv`, or only in the future `@caprail/cli` product package? in the future cli
+- Should `--help` and `--version` live in `@caprail/transport-argv`, or only in the future `@caprail/cli-argv` product package? in the future cli
 - For explain mode, do we explicitly require transport flags like `--json` to appear before the tool boundary, or do we want broader flag-order flexibility? require them before the mandatory `--` separator
 - When adding the transport package, should root workspaces move to grouped globs (`packages/guards/*`, `packages/transports/*`) or just add the direct path for now? direct path for now
 - Do we want to eventually define a broader cross-guard transport contract such as `invoke(operation, params)`, or should non-command-token guards continue to adopt transport shapes independently? we should work on a cross-guard contract
 
 ## Recommendation
 
-Approve this plan, then implement `@caprail/transport-argv` before `@caprail/cli`. Treat it as the argv transport for command-token guards, with `@caprail/guard-cli` as the first consumer, rather than as a universal local transport for every future Caprail guard. Use a mandatory `--` separator for execution and explain modes so parser behavior stays deterministic. Once the transport contract is stable, the product package should be very thin: import guard + transport, pass `process.argv.slice(2)`, wire stdio, and add composition tests.
+Approve this plan, then implement `@caprail/transport-argv` before `@caprail/cli-argv`. Treat it as the argv transport for command-token guards, with `@caprail/guard-cli` as the first consumer, rather than as a universal local transport for every future Caprail guard. Use a mandatory `--` separator for execution and explain modes so parser behavior stays deterministic. Once the transport contract is stable, the product package should be very thin: import guard + transport, pass `process.argv.slice(2)`, wire stdio, and add composition tests.

@@ -58,7 +58,7 @@ This means the same policy engine can be used locally via the CLI, over HTTP fro
 |-------|---------|-------------|
 | Guard | `@caprail/guard-cli` | Config loading, token-based allow/deny matching, non-interactive execution, audit logging |
 | Transport | `@caprail/transport-argv` | Parses `process.argv`, dispatches modes (validate/list/explain/execute), maps results to exit codes |
-| Product | `@caprail/cli` | Wires guard + transport, ships the `caprail-cli` binary |
+| Product | `@caprail/cli-argv` | Wires guard + transport, ships the `caprail-cli` binary |
 
 ### What's next
 
@@ -100,7 +100,7 @@ They compose well together: `@caprail/transport-mcp` would expose guarded CLI ac
 
 ```bash
 npm install
-node ./packages/products/cli/bin/caprail-cli.js --config examples/guards/cli.policy.yaml --validate --json
+node ./packages/products/cli-argv/bin/caprail-cli.js --config examples/guards/cli.policy.yaml --validate --json
 ```
 
 ```bash
@@ -128,7 +128,7 @@ caprail-cli --config policy.yaml -- gh pr list --state open
 packages/
   guards/cli/          @caprail/guard-cli
   transports/argv/     @caprail/transport-argv
-  products/cli/        @caprail/cli
+  products/cli/        @caprail/cli-argv
 docs/
   usecase-*.md         Deployment models
 examples/
