@@ -11,6 +11,12 @@ export {
 } from './config.js';
 
 export {
+  buildDiscoveryPayload,
+  buildExplainPayload,
+  buildListPayload,
+} from './discovery.js';
+
+export {
   evaluateCommand,
   evaluateToolPolicy,
   findMatchedDenyFlag,
