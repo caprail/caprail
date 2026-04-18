@@ -4,6 +4,7 @@
   "workspaces": [
     "packages/guards/cli",
     "packages/transports/argv",
+    "packages/transports/http",
     "packages/products/cli-argv"
   ]
 }

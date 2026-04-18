@@ -1,0 +1,21 @@
+{
+  "name": "@caprail/transport-http",
+  "version": "0.1.0",
+  "description": "HTTP transport for command-token guards in the Caprail family",
+  "type": "module",
+  "main": "./src/index.js",
+  "exports": {
+    ".": "./src/index.js"
+  },
+  "files": [
+    "README.md",
+    "docs",
+    "src"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "test": "node --test ./test/*.test.js"
+  }
+}
