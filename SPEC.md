@@ -412,9 +412,9 @@ import { resolve } from 'node:path';
 10. Works on Windows + Linux + macOS
 11. Both packages publishable to npm
 
-## Open Questions
+## Resolved Questions
 
-1. **YAML dependency vs inline parser** — Recommendation: use `yaml` package. Confirm?
-2. **Windows `spawn` behaviour** — `binary: gh` needs to resolve `gh.exe`/`gh.cmd` on Windows. Node's `spawn` with `shell: false` handles this for PATH-resolved commands but needs explicit testing.
-3. **Should `cliguard-http` stream responses or buffer?** For short CLI outputs (most agent use), buffering is simpler. For large outputs (e.g., `gh api` returning paginated data), streaming matters. Recommendation: buffer with a configurable max size, reject if exceeded.
-4. **Should `/discover` include example invocations?** Could help agents understand the CLI's arg format. Recommendation: not in v1 — the allow list is sufficient.
+1. **YAML dependency vs inline parser** — Using `yaml` package. Zero transitive deps, audit once.
+2. **Windows `spawn` behaviour** — Tested, works with PATH-resolved commands including `.cmd`/`.exe`.
+3. **Should `cliguard-http` stream responses or buffer?** Buffer with configurable max size for v1. Streaming can be added later if needed.
+4. **Should `/discover` include example invocations?** Not in v1 — the allow list is sufficient.

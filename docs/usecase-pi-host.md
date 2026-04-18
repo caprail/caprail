@@ -164,8 +164,7 @@ If the agent tries `gh pr create --title "fix bug"`:
 - Edit the cliguard config to allow more commands
 
 **Mitigations:**
-1. **Pi's file access boundaries** — configure Pi to restrict which directories the agent can read/edit. Exclude credential directories and cliguard config from the agent's allowed paths.
-2. **File permissions** — make cliguard config read-only for the user running Pi (if running as a different user, which is unlikely on a personal machine).
-3. **Accept the risk** — on a personal dev machine, the agent already has broad file access. The cliguard layer is defense-in-depth, not the sole boundary. It prevents accidental misuse; a determined adversarial agent is out of scope for this deployment model.
+1. **Separate Pi extension for file access control** — a planned extension will whitelist `read`/`edit`/`write` tool calls using globs, restricting which paths the agent can access. This closes the credential-read and config-edit vectors.
+2. **Accept residual risk** — until that extension is in place, the cliguard layer is defense-in-depth on a personal machine. It prevents accidental misuse; a determined adversarial agent is out of scope for this deployment model.
 
-**Recommendation:** Option 3 is pragmatic for a personal machine. Document the risk, accept it, and rely on the combination of Pi tool restrictions + Docker shell sandboxing + cliguard policy as layered defense.
+**Note:** The file access control extension and the bash-to-container proxy are a separate concern, bundled together in a different project. Cliguard is deliberately separate because it serves both use cases (sidecar and host).
