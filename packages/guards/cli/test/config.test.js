@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { mkdtempSync, mkdirSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 import {
   getDefaultConfigPaths,
@@ -20,6 +21,8 @@ function writeConfigFile(filePath, content) {
   mkdirSync(dirname(filePath), { recursive: true });
   writeFileSync(filePath, content);
 }
+
+const examplePolicyPath = fileURLToPath(new URL('../../../../examples/guards/cli.policy.yaml', import.meta.url));
 
 test('resolution prefers explicit config path over env and defaults', () => {
   const tempDir = createTempDir();
@@ -336,4 +339,26 @@ tools:
 
   assert.equal(report.valid, false);
   assert.equal(report.errors[0].code, 'policy_entry_empty');
+});
+
+test('example policy loads and validates with predictable binary warnings', () => {
+  const loaded = loadConfig({ configPath: examplePolicyPath });
+
+  assert.equal(loaded.ok, true);
+  assert.deepEqual(Object.keys(loaded.config.tools), ['gh', 'gws', 'az']);
+
+  const report = validateConfig(loaded.config, {
+    env: {
+      PATH: '',
+    },
+    platform: 'linux',
+  });
+
+  assert.equal(report.valid, true);
+  assert.deepEqual(report.errors, []);
+  assert.deepEqual(report.warnings.map((warning) => warning.code), [
+    'binary_not_found',
+    'binary_not_found',
+    'binary_not_found',
+  ]);
 });
