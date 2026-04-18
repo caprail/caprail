@@ -61,6 +61,23 @@ export async function executeGuardedCommand(config, toolName, args, options = {}
   let stdoutBytes = 0;
   let stderrBytes = 0;
 
+  // Abort-before-spawn: return early if signal is already fired.
+  if (options.signal?.aborted) {
+    const earlyAbort = {
+      status: 'execution_error',
+      allowed: true,
+      executed: false,
+      command,
+      evaluation,
+      durationMs: 0,
+      stdoutBytes: 0,
+      stderrBytes: 0,
+      error: { code: 'aborted', message: 'Execution was aborted before spawn.' },
+    };
+    writeAuditEvent(auditLogger, earlyAbort, evaluation, 0);
+    return earlyAbort;
+  }
+
   try {
     const completed = await new Promise((resolvePromise, rejectPromise) => {
       const child = spawn(toolConfig.binary, args, {
@@ -71,6 +88,16 @@ export async function executeGuardedCommand(config, toolName, args, options = {}
           ...NON_INTERACTIVE_ENV,
         },
       });
+
+      // Transport-level abort (e.g. timeout or output cap) kills the child.
+      let abortListener;
+      if (options.signal) {
+        abortListener = () => {
+          try { child.kill('SIGTERM'); } catch {}
+          setTimeout(() => { try { child.kill('SIGKILL'); } catch {} }, 200);
+        };
+        options.signal.addEventListener('abort', abortListener, { once: true });
+      }
 
       child.stdout.on('data', (chunk) => {
         stdoutBytes += chunk.length;
@@ -83,10 +110,12 @@ export async function executeGuardedCommand(config, toolName, args, options = {}
       });
 
       child.on('error', (error) => {
+        if (abortListener) options.signal.removeEventListener('abort', abortListener);
         rejectPromise(error);
       });
 
       child.on('close', (exitCode, signal) => {
+        if (abortListener) options.signal.removeEventListener('abort', abortListener);
         resolvePromise({
           exitCode,
           signal,
