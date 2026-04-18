@@ -178,7 +178,7 @@ The important part is the parameter type:
 2. Extension calls `GET /discover` on the host wrapper.
 3. Extension exposes `gh`, `az`, etc. to the agent with descriptions synthesized from the live policy.
 4. Agent invokes `gh` with `args: ["pr", "list", "--repo", "org/repo"]`.
-5. Host wrapper runs `cliguard --config C:\ProgramData\cliguard\config.yaml gh pr list --repo org/repo`.
+5. Host wrapper runs `cliguard --config C:\ProgramData\cliguard\config.yaml -- gh pr list --repo org/repo`.
 6. Cliguard checks policy and launches the real host CLI only if allowed.
 7. Wrapper returns structured JSON with `stdout`, `stderr`, and `exit_code`.
 

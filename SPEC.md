@@ -324,9 +324,9 @@ Test all:                 npm test --workspaces
 Lint all:                 npm run lint --workspaces
 
 # Working product example: cliguard (`guard-cli` + `transport-argv`)
-Run:                      cliguard --config <path> <tool> [args...]
-Explain mode:             cliguard --config <path> --explain <tool> [args...]
-Explain mode (JSON):      cliguard --config <path> --explain --json <tool> [args...]
+Run:                      cliguard --config <path> -- <tool> [args...]
+Explain mode:             cliguard --config <path> --explain -- <tool> [args...]
+Explain mode (JSON):      cliguard --config <path> --explain --json -- <tool> [args...]
 Validate config:          cliguard --config <path> --validate
 Validate config (JSON):   cliguard --config <path> --validate --json
 List permissions:         cliguard --config <path> --list [tool]
@@ -339,6 +339,8 @@ Optional limits:          cliguard-http --config <path> --timeout-ms 30000 --max
 ```
 
 `--config` is the recommended production mode for every agent integration. Environment or default-path lookup exists for local/manual use, but wrappers should pin policy explicitly.
+
+For the argv transport, execution and explain modes require a `--` separator. All transport flags must appear before `--`, and all tokens after it are passed through unchanged as command-token input.
 
 ---
 
@@ -439,7 +441,7 @@ Quotes inside config entries are treated as literal characters, not shell syntax
 Given invocation:
 
 ```text
-cliguard --config config.yaml gh --repo org/repo pr list --state open --json title,url
+cliguard --config config.yaml -- gh --repo org/repo pr list --state open --json title,url
 ```
 
 1. **Extract tool name:** `gh`
@@ -492,10 +494,10 @@ This avoids brittle string-prefix logic and makes matching rules explicit:
 ### Invocation
 
 ```text
-cliguard --config <path> <tool> [subcommand...] [flags...] [positional-args...]
+cliguard --config <path> -- <tool> [subcommand...] [flags...] [positional-args...]
 ```
 
-Everything after `<tool>` is passed to the real binary if allowed.
+For execution mode, the `--` separator is required. Everything after `--` is interpreted as command-token input, with the first token taken as `<tool>` and the remaining tokens passed to the real binary if allowed.
 
 ### Execution
 
@@ -522,7 +524,7 @@ Default execution mode is **non-interactive**:
 ### Explain Mode
 
 ```text
-cliguard --config config.yaml --explain gh pr create --title test
+cliguard --config config.yaml --explain -- gh pr create --title test
 ```
 
 Plain-text output:
@@ -868,9 +870,9 @@ import { resolve } from 'node:path';
 
 ## Success Criteria
 
-1. `cliguard --config <path> gh pr list --state open` executes and streams output
-2. `cliguard --config <path> gh pr create --title test` exits 126 with clear denial
-3. `cliguard --config <path> --explain gh pr create --json` prints structured matching output
+1. `cliguard --config <path> -- gh pr list --state open` executes and streams output
+2. `cliguard --config <path> -- gh pr create --title test` exits 126 with clear denial
+3. `cliguard --config <path> --explain --json -- gh pr create` prints structured matching output
 4. `cliguard --config <path> --list --json` shows permissions
 5. `cliguard --config <path> --validate --json` catches bad config
 6. `cliguard-http` serves `/exec`, `/discover`, `/health`

@@ -51,7 +51,7 @@ Cliguard constrains **verbs, not scope**. It can allow `gh pr view` and deny `gh
 
 1. **Discovery:** Agent calls `GET /discover` at session start. Receives a manifest of available tools and allowed commands.
 2. **Execution:** Agent calls `POST /exec` with tool name and `args` token array.
-3. **Non-interactive execution:** Sidecar runs `cliguard --config /etc/cliguard/config.yaml <tool> ...` with stdin disabled, pager suppression, timeout, and output cap.
+3. **Non-interactive execution:** Sidecar runs `cliguard --config /etc/cliguard/config.yaml -- <tool> ...` with stdin disabled, pager suppression, timeout, and output cap.
 4. **Denial handling:** If the command is denied, agent receives a 403 with a clear structured message.
 5. **Normal command failures:** If the command is allowed but the vendor CLI exits non-zero, the wrapper still returns HTTP 200 with the vendor exit code in the body.
 
