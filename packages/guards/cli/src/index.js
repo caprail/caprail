@@ -17,6 +17,16 @@ export {
 } from './discovery.js';
 
 export {
+  createExecutionEnvironment,
+  executeGuardedCommand,
+} from './executor.js';
+
+export {
+  createAuditLogger,
+  formatAuditEvent,
+} from './logger.js';
+
+export {
   evaluateCommand,
   evaluateToolPolicy,
   findMatchedDenyFlag,
