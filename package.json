@@ -2,6 +2,7 @@
   "name": "cli-whitelist-wrapper",
   "private": true,
   "workspaces": [
-    "packages/guards/cli"
+    "packages/guards/cli",
+    "packages/transports/argv"
   ]
 }
