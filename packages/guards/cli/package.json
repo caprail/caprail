@@ -1,0 +1,13 @@
+{
+  "name": "@caprail/guard-cli",
+  "version": "0.1.0",
+  "description": "Transport-agnostic CLI guard core for Caprail",
+  "type": "module",
+  "main": "./src/index.js",
+  "scripts": {
+    "test": "node --test ./test/*.test.js"
+  },
+  "dependencies": {
+    "yaml": "^2.8.1"
+  }
+}
