@@ -5,6 +5,7 @@
     "packages/guards/cli",
     "packages/transports/argv",
     "packages/transports/http",
-    "packages/products/cli-argv"
+    "packages/products/cli-argv",
+    "packages/products/cli-http"
   ]
 }
