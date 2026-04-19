@@ -4,6 +4,8 @@ Policy-enforced access to host capabilities for AI coding agents.
 
 Caprail sits between an agent and the real CLI binary, allowing only pre-configured subcommands to execute. The agent gets useful tool access — reading PRs, listing resources, drafting emails — without the ability to run arbitrary commands against authenticated vendor CLIs.
 
+**This is not theoretical.** Caprail's `cli-http` product is running in production as a Docker sidecar, giving [Openclaw](https://github.com/nicholasgasior/openclaw) policy-based access to a personal GitHub (`gh`) and Google Workspace email (`gws`). The agent can read PRs, view issues, list emails, and create drafts — but cannot merge, delete, or send. It works exactly as designed.
+
 ## The problem
 
 AI coding agents need access to vendor CLIs like `gh`, `az`, and `gws`. Those CLIs are authenticated with real credentials that often can't be scoped down — a `gh` token that can read PRs can also create them, merge them, or delete branches.
@@ -56,19 +58,19 @@ This means the same policy engine can be used locally via the CLI, over HTTP fro
 
 | Layer | Package | What it does |
 |-------|---------|-------------|
+| Product | `@caprail/cli-http` | Wires guard + HTTP transport, ships the `caprail-cli-http` binary — the sidecar/host wrapper |
+| Product | `@caprail/cli-argv` | Wires guard + argv transport, ships the `caprail-cli-argv` binary |
 | Guard | `@caprail/guard-cli` | Config loading, token-based allow/deny matching, non-interactive execution, audit logging |
 | Transport | `@caprail/transport-argv` | Parses `process.argv`, dispatches modes (validate/list/explain/execute), maps results to exit codes |
-| Product | `@caprail/cli-argv` | Wires guard + transport, ships the `caprail-cli` binary |
+| Transport | `@caprail/transport-http` | HTTP server transport with bearer auth, timeouts, output caps — `/exec`, `/discover`, `/health` |
 
 ### What's next
 
 | Package | Purpose |
 |---------|---------|
-| `@caprail/transport-http` | HTTP server transport with bearer auth, timeouts, output caps |
-| `@caprail/cli-http` | Product: `guard-cli` + `transport-http` — the sidecar/host wrapper |
 | `@caprail/transport-mcp` | MCP transport for native tool discovery in MCP-aware agents |
 | `@caprail/guard-files` | Read-only access to allowlisted host files and log folders |
-| `@caprail/guard-ui` | Declarative desktop UI automation for a single known app |
+| `@caprail/guard-ui` | Declarative desktop UI automation for specific apps |
 
 ## When to use this
 
@@ -78,7 +80,10 @@ An AI agent runs in one container. Authenticated CLIs and credentials live in a 
 
 This is the strongest model: the agent literally cannot run `gh` directly.
 
+**I'm currently running in production** — My Openclaw uses it to access GitHub and Google Workspace email via `caprail-cli-http`.
+
 → [docs/usecase-docker-sidecar.md](docs/usecase-docker-sidecar.md)
+→ [examples/products/cli-http-sidecar-experience.md](examples/products/cli-http-sidecar-experience.md)
 
 ### Host wrapper
 
@@ -100,18 +105,40 @@ They compose well together: `@caprail/transport-mcp` would expose guarded CLI ac
 
 ```bash
 npm install
-node ./packages/products/cli-argv/bin/caprail-cli.js --config examples/guards/cli.policy.yaml --validate --json
 ```
 
+### Local CLI (cli-argv)
+
 ```bash
+# Validate a policy config
+node ./packages/products/cli-argv/bin/caprail-cli.js --config examples/guards/cli.policy.yaml --validate
+
 # List what the agent can do
-caprail-cli --config policy.yaml --list --json
+node ./packages/products/cli-argv/bin/caprail-cli.js --config examples/guards/cli.policy.yaml --list
 
 # Explain whether a specific command would be allowed
-caprail-cli --config policy.yaml --explain --json -- gh pr create --title test
+node ./packages/products/cli-argv/bin/caprail-cli.js --config examples/guards/cli.policy.yaml --explain -- gh pr create --title test
 
 # Run a guarded command
-caprail-cli --config policy.yaml -- gh pr list --state open
+node ./packages/products/cli-argv/bin/caprail-cli.js --config examples/guards/cli.policy.yaml -- gh pr list --state open
+```
+
+### HTTP sidecar (cli-http)
+
+```bash
+# Start the HTTP server with token auth
+node ./packages/products/cli-http/bin/caprail-cli-http.js \
+  --config examples/guards/cli.policy.yaml \
+  --port 8100 \
+  --token mysecret
+
+# In another terminal:
+curl http://localhost:8100/health
+curl -H "Authorization: Bearer mysecret" http://localhost:8100/discover
+curl -X POST http://localhost:8100/exec \
+  -H "Authorization: Bearer mysecret" \
+  -H "Content-Type: application/json" \
+  -d '{"tool": "gh", "args": ["pr", "list", "--state", "open"]}'
 ```
 
 ## Design principles
@@ -126,13 +153,21 @@ caprail-cli --config policy.yaml -- gh pr list --state open
 
 ```
 packages/
-  guards/cli/          @caprail/guard-cli
-  transports/argv/     @caprail/transport-argv
-  products/cli/        @caprail/cli-argv
+  guards/
+    cli/               @caprail/guard-cli
+  transports/
+    argv/              @caprail/transport-argv
+    http/              @caprail/transport-http
+  products/
+    cli-argv/          @caprail/cli-argv      (local CLI binary)
+    cli-http/          @caprail/cli-http      (HTTP sidecar binary)
 docs/
   usecase-*.md         Deployment models
 examples/
   guards/cli.policy.yaml
+  products/
+    cli-argv-local-experience.md
+    cli-http-sidecar-experience.md
 ```
 
 Node 18+. No build step. Only runtime dependency is `yaml` (zero transitive deps).
@@ -140,3 +175,8 @@ Node 18+. No build step. Only runtime dependency is `yaml` (zero transitive deps
 ## Links
 
 - [Example policy](examples/guards/cli.policy.yaml)
+- [cli-argv local experience](examples/products/cli-argv-local-experience.md)
+- [cli-http sidecar experience](examples/products/cli-http-sidecar-experience.md)
+- [Docker sidecar use case](docs/usecase-docker-sidecar.md)
+- [Host wrapper use case](docs/usecase-pi-container-host-wrapper.md)
+- [HTTP API contract](packages/transports/http/docs/api.md)

@@ -23,11 +23,11 @@ tools:
     binary: gws
     description: Google Workspace CLI (read + draft only)
     allow:
-      - gmail messages list
-      - gmail messages get
-      - gmail drafts create
-      - gmail drafts list
-      - gmail drafts get
+      - gmail users messages list
+      - gmail users messages get
+      - gmail users drafts create
+      - gmail users drafts list
+      - gmail users drafts get
 
   az:
     binary: az
