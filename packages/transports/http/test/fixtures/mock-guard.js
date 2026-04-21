@@ -1,9 +1,17 @@
+import { mkdtempSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+
 function clone(value) {
   return JSON.parse(JSON.stringify(value));
 }
 
+const DEFAULT_CONFIG_DIR = mkdtempSync(join(tmpdir(), 'caprail-http-mock-guard-'));
+const DEFAULT_CONFIG_PATH = join(DEFAULT_CONFIG_DIR, 'config.yaml');
+writeFileSync(DEFAULT_CONFIG_PATH, 'mock-config-v1');
+
 const DEFAULT_CONFIG = {
-  source: { path: '/secure/caprail-cli/config.yaml', source: 'cli' },
+  source: { path: DEFAULT_CONFIG_PATH, source: 'cli' },
   settings: { auditLog: 'none', auditFormat: 'jsonl' },
   tools: {
     gh: {
@@ -54,7 +62,13 @@ export function createMockGuard(overrides = {}) {
         return overrides.loadAndValidateConfig(options);
       }
 
-      return { ok: true, config: clone(config), report: { valid: true, errors: [], warnings: [] }, error: null };
+      return {
+        ok: true,
+        configPath: config.source?.path ?? DEFAULT_CONFIG_PATH,
+        config: clone(config),
+        report: { valid: true, errors: [], warnings: [] },
+        error: null,
+      };
     },
 
     buildListPayload(receivedConfig, options = {}) {

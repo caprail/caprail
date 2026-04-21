@@ -46,6 +46,7 @@ export function createMockGuard(overrides = {}) {
 
       return {
         ok: true,
+        configPath: config.source?.path,
         config,
         report: clone(defaultValidationReport),
         error: null,

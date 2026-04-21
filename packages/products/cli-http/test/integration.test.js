@@ -4,7 +4,7 @@ import http from 'node:http';
 
 import { startCliHttpProduct } from '@caprail/cli-http';
 
-import { createHttpProductFixture } from './fixtures/create-http-product-fixture.js';
+import { createHttpProductFixture, writeHttpProductConfig } from './fixtures/create-http-product-fixture.js';
 
 function req(port, { method = 'GET', path = '/', body, auth } = {}) {
   return new Promise((resolve, reject) => {
@@ -54,6 +54,37 @@ test('integration starts product and serves /health, /discover, and /exec', asyn
     assert.equal(exec.status, 200);
     assert.equal(exec.json.allowed, true);
     assert.match(exec.json.stdout, /echo:ok/);
+  } finally {
+    await new Promise((resolve) => started.server.close(resolve));
+  }
+});
+
+test('integration hot reloads the policy YAML without restarting the product', async () => {
+  const { configPath, scriptPath } = createHttpProductFixture();
+
+  const started = await startCliHttpProduct({
+    argv: ['--config', configPath, '--port', '0', '--no-auth'],
+  });
+
+  try {
+    const deniedBeforeReload = await req(started.address.port, {
+      method: 'POST',
+      path: '/exec',
+      body: { tool: 'node', args: [scriptPath, 'fail'] },
+    });
+    assert.equal(deniedBeforeReload.status, 403);
+    assert.equal(deniedBeforeReload.json.error.code, 'policy_denied');
+
+    writeHttpProductConfig(configPath, scriptPath, ['echo', 'fail']);
+
+    const allowedAfterReload = await req(started.address.port, {
+      method: 'POST',
+      path: '/exec',
+      body: { tool: 'node', args: [scriptPath, 'fail'] },
+    });
+    assert.equal(allowedAfterReload.status, 200);
+    assert.equal(allowedAfterReload.json.allowed, true);
+    assert.equal(allowedAfterReload.json.exit_code, 2);
   } finally {
     await new Promise((resolve) => started.server.close(resolve));
   }

@@ -1,7 +1,7 @@
 {
-  "name": "@caprail/transport-http",
+  "name": "@caprail/config-runtime",
   "version": "0.1.0",
-  "description": "HTTP transport for command-token guards in the Caprail family",
+  "description": "Shared config runtime helpers for Caprail packages",
   "type": "module",
   "main": "./src/index.js",
   "exports": {
@@ -9,7 +9,6 @@
   },
   "files": [
     "README.md",
-    "docs",
     "src"
   ],
   "engines": {
@@ -17,8 +16,5 @@
   },
   "scripts": {
     "test": "node --test ./test/*.test.js"
-  },
-  "dependencies": {
-    "@caprail/config-runtime": "0.1.0"
   }
 }

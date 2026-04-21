@@ -119,6 +119,8 @@ When the timeout fires, the child process is sent SIGTERM (then SIGKILL after 20
 
 #### 500 Internal Server Error — transport or guard failure
 
+This also covers hot-reload failures on `/discover` and `/exec`.
+
 ```json
 {
   "error": {
@@ -135,6 +137,10 @@ When the timeout fires, the child process is sent SIGTERM (then SIGKILL after 20
 Returns all configured tools and their allowed commands, plus the execution metadata
 block. Designed for agent-side tool generation — an agent can call this once at startup
 and synthesise tool descriptions from the response.
+
+`/discover` hot-reloads the backing policy file when it changes on disk. If the updated
+config cannot be read or validated, the endpoint fails closed with HTTP 500 until the
+config is fixed.
 
 ### Request
 

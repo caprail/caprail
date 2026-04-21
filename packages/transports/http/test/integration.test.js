@@ -48,9 +48,14 @@ function req(port, { method = 'GET', path = '/', body, auth } = {}) {
  * Create a temp config that allows `node` with specific arg patterns.
  * Uses the real Node.js binary so tests are self-contained.
  */
-function createTempConfig() {
+function createTempConfig(allowedModes = ['echo', 'fail', 'bigoutput', 'sleep']) {
   const tempDir = mkdtempSync(join(tmpdir(), 'caprail-http-integ-'));
   const configPath = join(tempDir, 'config.yaml');
+  writeTempConfig(configPath, allowedModes);
+  return configPath;
+}
+
+function writeTempConfig(configPath, allowedModes = ['echo', 'fail', 'bigoutput', 'sleep']) {
   const nodeBinary = process.execPath.replace(/\\/g, '\\\\');
 
   writeFileSync(configPath, [
@@ -62,14 +67,9 @@ function createTempConfig() {
     `    binary: "${nodeBinary}"`,
     '    description: Node integration fixture',
     '    allow:',
-    `      - "${FIXTURE_CHILD.replace(/\\/g, '\\\\')} echo"`,
-    `      - "${FIXTURE_CHILD.replace(/\\/g, '\\\\')} fail"`,
-    `      - "${FIXTURE_CHILD.replace(/\\/g, '\\\\')} bigoutput"`,
-    `      - "${FIXTURE_CHILD.replace(/\\/g, '\\\\')} sleep"`,
+    ...allowedModes.map((mode) => `      - "${FIXTURE_CHILD.replace(/\\/g, '\\\\')} ${mode}"`),
     '',
   ].join('\n'));
-
-  return configPath;
 }
 
 async function withIntegServer(extraOptions, fn) {
@@ -177,6 +177,40 @@ test('integration: startup fails if config path is invalid', async () => {
     }),
     /startup validation failed/i,
   );
+});
+
+test('integration: /exec hot reloads the YAML policy without a restart', async () => {
+  const configPath = createTempConfig(['echo']);
+  const server = await startHttpTransportServer({
+    guard: guardCli,
+    configPath,
+    auth: { noAuth: true },
+    host: '127.0.0.1',
+    port: 0,
+  });
+  const port = server.address().port;
+
+  try {
+    const deniedBeforeReload = await req(port, {
+      method: 'POST', path: '/exec',
+      body: { tool: 'node', args: [FIXTURE_CHILD, 'unknown_mode'] },
+    });
+    assert.equal(deniedBeforeReload.status, 403);
+    assert.equal(deniedBeforeReload.json.error.code, 'policy_denied');
+
+    writeTempConfig(configPath, ['echo', 'unknown_mode']);
+
+    const allowedAfterReload = await req(port, {
+      method: 'POST', path: '/exec',
+      body: { tool: 'node', args: [FIXTURE_CHILD, 'unknown_mode'] },
+    });
+    assert.equal(allowedAfterReload.status, 200);
+    assert.equal(allowedAfterReload.json.allowed, true);
+    assert.equal(allowedAfterReload.json.exit_code, 3);
+    assert.match(allowedAfterReload.json.stderr, /unknown mode/);
+  } finally {
+    await new Promise((resolve) => server.close(resolve));
+  }
 });
 
 // ---------------------------------------------------------------------------

@@ -48,6 +48,10 @@ Observed behavior:
 
 This confirms product wiring is doing the right thing: parser → guard + transport composition → runtime UX.
 
+Operationally, the server hot-reloads the configured policy YAML for `/discover` and
+`/exec` when the file changes on disk. If a reload fails, those protected routes return
+HTTP 500 until the config is fixed; `/health` remains available.
+
 ---
 
 ## Typical startup patterns
@@ -162,6 +166,7 @@ Important: matching is token-exact. If your allow rule uses one path form and yo
 `@caprail/cli-http` is a product wrapper.
 
 - Product owns: startup flags, bin wiring, startup UX.
+- `@caprail/config-runtime` owns: config runtime state and hot-reload lifecycle.
 - `@caprail/transport-http` owns: route contracts/auth/timeout/output-cap behavior.
 - `@caprail/guard-cli` owns: config/policy/matching/execution semantics.
 

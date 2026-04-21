@@ -39,6 +39,11 @@ Validates the guard contract, auth configuration, and policy config via
 `guard.loadAndValidateConfig`, then returns a configured `http.Server` that is **not
 yet listening**. Throws if any startup step fails (fail-closed).
 
+After startup, `/discover` and `/exec` hot-reload the policy file when its on-disk
+fingerprint changes. Reload failures are also fail-closed: protected routes return 500
+until the config becomes valid again. `/health` stays public and does not depend on
+successful reloads.
+
 ### `startHttpTransportServer(options)` → `Promise<http.Server>`
 
 Same as `createHttpTransportServer`, but also starts listening on the configured
@@ -67,7 +72,7 @@ internals are invisible to the transport.
 ```js
 {
   // Load and validate the policy config from disk.
-  // Returns { ok, config, report, error }.
+  // Returns { ok, configPath, config, report, error }.
   loadAndValidateConfig(options),
 
   // Return serialised tool definitions for /discover.
@@ -119,13 +124,14 @@ buffered before the cap is enforced.
 
 ```text
 guard package:     policy model + config + evaluation + execution + audit
+shared package:    config runtime + hot-reload state/fingerprinting
 transport package: HTTP protocol + auth + timeout/output limits + process lifecycle
 product package:   thin wiring + CLI flags + binary entry point
 ```
 
 `@caprail/transport-http` is intentionally guard-agnostic. A future product like
 `@caprail/files-http` can reuse this transport with a different guard without changing
-any HTTP runtime code.
+any HTTP runtime code, while sharing the same config-runtime helpers.
 
 ---
 

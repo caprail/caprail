@@ -187,11 +187,15 @@ export function loadConfig(options = {}) {
   const parsed = parseConfig(configText, { configPath: resolved.path });
 
   if (!parsed.ok) {
-    return parsed;
+    return {
+      ...parsed,
+      configPath: resolved.path,
+    };
   }
 
   return {
     ok: true,
+    configPath: resolved.path,
     config: {
       ...parsed.config,
       source: {
@@ -226,6 +230,7 @@ export function loadAndValidateConfig(options = {}) {
   if (!loaded.ok) {
     return {
       ok: false,
+      configPath: loaded.configPath ?? loaded.error?.path,
       report: {
         valid: false,
         errors: [loaded.error],
@@ -239,6 +244,7 @@ export function loadAndValidateConfig(options = {}) {
 
   return {
     ok: report.valid,
+    configPath: loaded.configPath,
     config: loaded.config,
     report,
     error: report.valid ? null : report.errors[0],

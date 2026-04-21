@@ -7,6 +7,7 @@ import { fileURLToPath } from 'node:url';
 
 import {
   getDefaultConfigPaths,
+  loadAndValidateConfig,
   loadConfig,
   parseConfig,
   resolveConfigPath,
@@ -211,8 +212,45 @@ tools:
   const result = loadConfig({ configPath });
 
   assert.equal(result.ok, true);
+  assert.equal(result.configPath, resolve(configPath));
   assert.equal(result.config.source.path, resolve(configPath));
   assert.deepEqual(result.config.tools.az.allow, ['group list']);
+});
+
+
+test('loadAndValidateConfig returns explicit configPath on success', () => {
+  const tempDir = createTempDir();
+  const configPath = join(tempDir, 'policy.yaml');
+
+  writeConfigFile(configPath, `
+settings:
+  audit_log: none
+tools:
+  az:
+    binary: az
+    allow:
+      - group list
+`);
+
+  const result = loadAndValidateConfig({ configPath });
+
+  assert.equal(result.ok, true);
+  assert.equal(result.configPath, resolve(configPath));
+  assert.deepEqual(result.config.tools.az.allow, ['group list']);
+});
+
+
+test('loadAndValidateConfig returns explicit configPath on parse failure', () => {
+  const tempDir = createTempDir();
+  const configPath = join(tempDir, 'policy.yaml');
+
+  writeConfigFile(configPath, 'tools:\n  gh: [\n');
+
+  const result = loadAndValidateConfig({ configPath });
+
+  assert.equal(result.ok, false);
+  assert.equal(result.configPath, resolve(configPath));
+  assert.equal(result.error.code, 'config_parse_error');
 });
 
 test('validate returns a clean report for a good config', () => {

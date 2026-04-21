@@ -57,6 +57,8 @@ if (!loaded.ok) {
   process.exit(1);
 }
 
+console.log(`Loaded config from ${loaded.configPath}`);
+
 const discovery = buildDiscoveryPayload(loaded.config);
 const explanation = buildExplainPayload(loaded.config, 'gh', ['pr', 'list']);
 const result = await executeGuardedCommand(loaded.config, 'gh', ['pr', 'list'], {

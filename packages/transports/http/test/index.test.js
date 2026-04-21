@@ -1,6 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import http from 'node:http';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 
 import { createHttpTransportServer, startHttpTransportServer } from '../src/index.js';
 import { createMockGuard } from './fixtures/mock-guard.js';
@@ -49,6 +52,47 @@ async function withServer(guardOverrides, authOptions, fn) {
   } finally {
     await new Promise((resolve) => server.close(resolve));
   }
+}
+
+function createTempPolicyFile(initialText = 'version-1') {
+  const tempDir = mkdtempSync(join(tmpdir(), 'caprail-http-hot-reload-'));
+  const configPath = join(tempDir, 'config.yaml');
+  writeFileSync(configPath, initialText);
+  return { tempDir, configPath };
+}
+
+function makeConfig(configPath, toolName) {
+  return {
+    source: { path: configPath, source: 'cli' },
+    settings: { auditLog: 'none', auditFormat: 'jsonl' },
+    tools: {
+      [toolName]: {
+        name: toolName,
+        binary: toolName,
+        description: `${toolName} tool`,
+        allow: ['run'],
+        deny: [],
+        denyFlags: [],
+      },
+    },
+  };
+}
+
+function makeListPayload(config) {
+  return {
+    ok: true,
+    payload: {
+      tools: Object.fromEntries(
+        Object.entries(config.tools).map(([toolName, tool]) => [toolName, {
+          binary: tool.binary,
+          description: tool.description,
+          allow: [...tool.allow],
+          deny: [...tool.deny],
+          deny_flags: [...tool.denyFlags],
+        }]),
+      ),
+    },
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -193,6 +237,127 @@ test('GET /discover reflects configured timeout and output cap', async () => {
     const res = await req(port, { path: '/discover' });
     assert.equal(res.json.execution.timeout_ms, 15000);
     assert.equal(res.json.execution.max_output_bytes, 524288);
+  } finally {
+    await new Promise((resolve) => server.close(resolve));
+  }
+});
+
+test('GET /discover hot reloads config after the policy file changes', async () => {
+  const { configPath } = createTempPolicyFile('version-1');
+  const configs = [makeConfig(configPath, 'gh'), makeConfig(configPath, 'git')];
+  let loadCount = 0;
+
+  const guard = createMockGuard({
+    config: configs[0],
+    loadAndValidateConfig: () => {
+      const config = configs[Math.min(loadCount, configs.length - 1)];
+      loadCount += 1;
+      return {
+        ok: true,
+        configPath,
+        config,
+        report: { valid: true, errors: [], warnings: [] },
+        error: null,
+      };
+    },
+    buildListPayload: (config) => makeListPayload(config),
+  });
+
+  const server = await startHttpTransportServer({
+    guard,
+    auth: { noAuth: true },
+    host: '127.0.0.1',
+    port: 0,
+    configPath,
+  });
+  const port = server.address().port;
+
+  try {
+    const before = await req(port, { path: '/discover' });
+    assert.equal(before.status, 200);
+    assert.ok(before.json.tools.gh);
+    assert.equal(guard.calls.loadAndValidateConfig.length, 1, 'startup load only before file change');
+
+    writeFileSync(configPath, 'version-2 with different size');
+
+    const after = await req(port, { path: '/discover' });
+    assert.equal(after.status, 200);
+    assert.ok(after.json.tools.git);
+    assert.equal(guard.calls.loadAndValidateConfig.length, 2, 'reload triggered after file change');
+  } finally {
+    await new Promise((resolve) => server.close(resolve));
+  }
+});
+
+test('protected routes fail closed on invalid hot reload and recover after config is fixed', async () => {
+  const { configPath } = createTempPolicyFile('valid-v1');
+
+  const guard = createMockGuard({
+    config: makeConfig(configPath, 'gh'),
+    loadAndValidateConfig: () => {
+      const text = readFileSync(configPath, 'utf8');
+
+      if (text.startsWith('invalid')) {
+        return {
+          ok: false,
+          error: { code: 'config_invalid', message: 'Config syntax is invalid.' },
+          report: { valid: false, errors: [{ code: 'config_invalid', message: 'Config syntax is invalid.' }], warnings: [] },
+        };
+      }
+
+      const toolName = text.includes('v2') ? 'git' : 'gh';
+      return {
+        ok: true,
+        configPath,
+        config: makeConfig(configPath, toolName),
+        report: { valid: true, errors: [], warnings: [] },
+        error: null,
+      };
+    },
+    buildListPayload: (config) => makeListPayload(config),
+    executeGuardedCommand: async (config) => ({
+      status: 'executed',
+      allowed: true,
+      executed: true,
+      exitCode: Object.keys(config.tools)[0] === 'git' ? 7 : 0,
+    }),
+  });
+
+  const server = await startHttpTransportServer({
+    guard,
+    auth: { noAuth: true },
+    host: '127.0.0.1',
+    port: 0,
+    configPath,
+  });
+  const port = server.address().port;
+
+  try {
+    const initial = await req(port, { method: 'POST', path: '/exec', body: { tool: 'gh', args: [] } });
+    assert.equal(initial.status, 200);
+    assert.equal(initial.json.exit_code, 0);
+
+    writeFileSync(configPath, 'invalid-v2');
+
+    const invalidDiscover = await req(port, { path: '/discover' });
+    assert.equal(invalidDiscover.status, 500);
+    assert.equal(invalidDiscover.json.error.code, 'config_reload_failed');
+
+    const invalidExec = await req(port, { method: 'POST', path: '/exec', body: { tool: 'gh', args: [] } });
+    assert.equal(invalidExec.status, 500);
+    assert.equal(invalidExec.json.error.code, 'config_reload_failed');
+    assert.equal(guard.calls.loadAndValidateConfig.length, 2, 'invalid fingerprint is cached until file changes again');
+
+    writeFileSync(configPath, 'valid-v2 with a new fingerprint');
+
+    const recoveredDiscover = await req(port, { path: '/discover' });
+    assert.equal(recoveredDiscover.status, 200);
+    assert.ok(recoveredDiscover.json.tools.git);
+
+    const recoveredExec = await req(port, { method: 'POST', path: '/exec', body: { tool: 'git', args: [] } });
+    assert.equal(recoveredExec.status, 200);
+    assert.equal(recoveredExec.json.exit_code, 7);
+    assert.equal(guard.calls.loadAndValidateConfig.length, 3);
   } finally {
     await new Promise((resolve) => server.close(resolve));
   }

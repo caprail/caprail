@@ -49,6 +49,10 @@ After startup, use:
 - `GET /discover`
 - `POST /exec`
 
+The product hot-reloads the configured policy YAML for `/discover` and `/exec` when the
+file changes on disk. Reload errors are fail-closed: protected routes return 500 until
+the config is valid again.
+
 For full route request/response contracts, see `@caprail/transport-http` docs:
 - `packages/transports/http/docs/api.md`
 - `packages/transports/http/docs/auth.md`
@@ -91,6 +95,7 @@ Returns:
 
 - Product (`@caprail/cli-http`): startup flags, bin wiring, startup UX
 - Guard (`@caprail/guard-cli`): policy semantics, config loading/validation, matching, execution
+- Shared (`@caprail/config-runtime`): config runtime state and hot-reload lifecycle
 - Transport (`@caprail/transport-http`): HTTP protocol, `/exec`/`/discover`/`/health`, auth behavior, timeout/cap behavior
 
 This package does **not** reimplement HTTP behavior from the transport package.

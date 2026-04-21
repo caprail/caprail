@@ -1,5 +1,7 @@
 import { createServer } from 'node:http';
 
+import { createReloadableConfigRuntime } from '@caprail/config-runtime';
+
 import { parseJsonBody, writeJson, writeError, checkAuth } from './server.js';
 import { buildDiscoverPayload } from './discovery.js';
 
@@ -51,7 +53,7 @@ export async function createHttpTransportServer(options = {}) {
 
   let loaded;
   try {
-    loaded = guard.loadAndValidateConfig(configOptions);
+    loaded = loadGuardConfig(guard, configOptions);
   } catch (err) {
     throw new Error(`Config load failed: ${err?.message ?? String(err)}`);
   }
@@ -62,7 +64,18 @@ export async function createHttpTransportServer(options = {}) {
   }
 
   const config = loaded.config;
-  const ctx = { guard, config, auth, timeoutMs, maxOutputBytes, env };
+  const ctx = {
+    guard,
+    configRuntime: createReloadableConfigRuntime({
+      config,
+      configPath: loaded.configPath ?? configPath,
+      reloadConfig: ({ configPath: activeConfigPath }) => reloadGuardConfig(guard, activeConfigPath, env),
+    }),
+    auth,
+    timeoutMs,
+    maxOutputBytes,
+    env,
+  };
 
   const server = createServer((req, res) => {
     handleRequest(req, res, ctx).catch((err) => {
@@ -141,7 +154,12 @@ function handleDiscover(req, res, ctx) {
     return writeError(res, 401, 'unauthorized', 'Missing or invalid bearer token.');
   }
 
-  const discovery = buildDiscoverPayload(ctx.guard, ctx.config, {
+  const activeConfig = ctx.configRuntime.getActiveConfig();
+  if (!activeConfig.ok) {
+    return writeError(res, 500, activeConfig.error.code, activeConfig.error.message);
+  }
+
+  const discovery = buildDiscoverPayload(ctx.guard, activeConfig.config, {
     timeoutMs: ctx.timeoutMs,
     maxOutputBytes: ctx.maxOutputBytes,
   });
@@ -175,9 +193,14 @@ async function handleExec(req, res, ctx) {
     return writeError(res, 400, 'invalid_request', shapeError);
   }
 
+  const activeConfig = ctx.configRuntime.getActiveConfig();
+  if (!activeConfig.ok) {
+    return writeError(res, 500, activeConfig.error.code, activeConfig.error.message);
+  }
+
   const { tool, args } = body;
 
-  const execResult = await executeWithLimits(ctx.guard, ctx.config, tool, args, {
+  const execResult = await executeWithLimits(ctx.guard, activeConfig.config, tool, args, {
     timeoutMs: ctx.timeoutMs,
     maxOutputBytes: ctx.maxOutputBytes,
     env: ctx.env,
@@ -235,6 +258,31 @@ async function handleExec(req, res, ctx) {
     res, 500, 'internal_error',
     result?.error?.message ?? 'Command execution failed.',
   );
+}
+
+// ---------------------------------------------------------------------------
+// Config loading
+// ---------------------------------------------------------------------------
+
+function loadGuardConfig(guard, options) {
+  return guard.loadAndValidateConfig(options);
+}
+
+function reloadGuardConfig(guard, configPath, env) {
+  const loaded = loadGuardConfig(guard, { configPath, env });
+
+  if (!loaded || !loaded.ok) {
+    return {
+      ok: false,
+      error: loaded?.error ?? { code: 'config_invalid', message: 'Config validation failed.' },
+    };
+  }
+
+  return {
+    ok: true,
+    config: loaded.config,
+    configPath: loaded.configPath ?? configPath,
+  };
 }
 
 // ---------------------------------------------------------------------------

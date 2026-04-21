@@ -41,6 +41,14 @@ tools:
 - omitted `settings.audit_format` becomes `text`
 - tool configs are normalized into internal camelCase fields such as `denyFlags`
 
+## Load result shape
+
+`loadConfig()` returns `{ ok, configPath, config }` on success.
+`loadAndValidateConfig()` returns `{ ok, configPath, config, report, error }`.
+
+`configPath` is the resolved canonical path used to load the policy file. Consumers should
+prefer this explicit field over reaching into config metadata.
+
 ## Validation report
 
 `validateConfig()` returns:

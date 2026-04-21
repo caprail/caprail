@@ -19,6 +19,16 @@ export function createHttpProductFixture() {
     '',
   ].join('\n'));
 
+  writeHttpProductConfig(configPath, scriptPath, ['echo']);
+
+  return {
+    tempDirectory,
+    configPath,
+    scriptPath,
+  };
+}
+
+export function writeHttpProductConfig(configPath, scriptPath, allowedModes = ['echo']) {
   writeFileSync(configPath, [
     'settings:',
     '  audit_log: none',
@@ -28,13 +38,7 @@ export function createHttpProductFixture() {
     `    binary: "${process.execPath.replace(/\\/g, '\\\\')}"`,
     '    description: Product HTTP fixture',
     '    allow:',
-    `      - "${scriptPath.replace(/\\/g, '\\\\')} echo"`,
+    ...allowedModes.map((mode) => `      - "${scriptPath.replace(/\\/g, '\\\\')} ${mode}"`),
     '',
   ].join('\n'));
-
-  return {
-    tempDirectory,
-    configPath,
-    scriptPath,
-  };
 }
