@@ -1,0 +1,104 @@
+name: Publish npm packages
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: "24"
+          registry-url: "https://registry.npmjs.org"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Verify tests
+        run: npm test --workspaces
+
+      - name: Verify tag version matches package versions
+        env:
+          TAG_NAME: ${{ github.ref_name }}
+        run: |
+          node -e "
+          const fs = require('fs');
+          const path = require('path');
+          const version = process.env.TAG_NAME.replace(/^v/, '');
+          const packages = [
+            'packages/shared/config-runtime',
+            'packages/guards/cli',
+            'packages/transports/argv',
+            'packages/transports/http',
+            'packages/products/cli-argv',
+            'packages/products/cli-http'
+          ];
+          for (const pkgPath of packages) {
+            const manifestPath = path.join(pkgPath, 'package.json');
+            const pkg = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
+            if (pkg.version !== version) {
+              console.error(\`Version mismatch for \${pkg.name}: expected \${version}, got \${pkg.version}\`);
+              process.exit(1);
+            }
+          }
+          console.log('All package versions match tag', process.env.TAG_NAME);
+          "
+
+      - name: Publish @caprail/config-runtime
+        uses: JS-DevTools/npm-publish@v4
+        with:
+          token: ${{ secrets.NPM_TOKEN }}
+          package: packages/shared/config-runtime
+          access: public
+          provenance: true
+
+      - name: Publish @caprail/guard-cli
+        uses: JS-DevTools/npm-publish@v4
+        with:
+          token: ${{ secrets.NPM_TOKEN }}
+          package: packages/guards/cli
+          access: public
+          provenance: true
+
+      - name: Publish @caprail/transport-argv
+        uses: JS-DevTools/npm-publish@v4
+        with:
+          token: ${{ secrets.NPM_TOKEN }}
+          package: packages/transports/argv
+          access: public
+          provenance: true
+
+      - name: Publish @caprail/transport-http
+        uses: JS-DevTools/npm-publish@v4
+        with:
+          token: ${{ secrets.NPM_TOKEN }}
+          package: packages/transports/http
+          access: public
+          provenance: true
+
+      - name: Publish @caprail/cli-argv
+        uses: JS-DevTools/npm-publish@v4
+        with:
+          token: ${{ secrets.NPM_TOKEN }}
+          package: packages/products/cli-argv
+          access: public
+          provenance: true
+
+      - name: Publish @caprail/cli-http
+        uses: JS-DevTools/npm-publish@v4
+        with:
+          token: ${{ secrets.NPM_TOKEN }}
+          package: packages/products/cli-http
+          access: public
+          provenance: true
