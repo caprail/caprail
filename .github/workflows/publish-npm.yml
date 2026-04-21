@@ -2,19 +2,28 @@ name: Publish npm packages
 
 on:
   push:
-    tags:
-      - "v*.*.*"
+    branches:
+      - main
+    paths:
+      - "packages/**/package.json"
+      - ".github/workflows/publish-npm.yml"
+  workflow_dispatch:
 
 permissions:
   contents: read
   id-token: write
 
 jobs:
-  publish:
+  prepare:
     runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.changed.outputs.matrix }}
+      has_changes: ${{ steps.changed.outputs.has_changes }}
     steps:
       - name: Checkout
         uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
 
       - name: Setup Node
         uses: actions/setup-node@v6
@@ -28,14 +37,16 @@ jobs:
       - name: Verify tests
         run: npm test --workspaces
 
-      - name: Verify tag version matches package versions
+      - name: Detect packages with version changes
+        id: changed
         env:
-          TAG_NAME: ${{ github.ref_name }}
+          BEFORE_SHA: ${{ github.event.before }}
+          GITHUB_SHA: ${{ github.sha }}
         run: |
           node -e "
           const fs = require('fs');
-          const path = require('path');
-          const version = process.env.TAG_NAME.replace(/^v/, '');
+          const { execSync } = require('child_process');
+
           const packages = [
             'packages/shared/config-runtime',
             'packages/guards/cli',
@@ -44,55 +55,69 @@ jobs:
             'packages/products/cli-argv',
             'packages/products/cli-http'
           ];
+
+          const outputPath = process.env.GITHUB_OUTPUT;
+          const beforeSha = process.env.BEFORE_SHA;
+
+          const readAtRef = (ref, filePath) => {
+            try {
+              return execSync(`git show ${ref}:${filePath}`, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] });
+            } catch {
+              return null;
+            }
+          };
+
+          const changed = [];
+
           for (const pkgPath of packages) {
-            const manifestPath = path.join(pkgPath, 'package.json');
-            const pkg = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
-            if (pkg.version !== version) {
-              console.error(\`Version mismatch for \${pkg.name}: expected \${version}, got \${pkg.version}\`);
-              process.exit(1);
+            const manifestPath = `${pkgPath}/package.json`;
+            const headPkg = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
+            const baseRaw = beforeSha ? readAtRef(beforeSha, manifestPath) : null;
+            const basePkg = baseRaw ? JSON.parse(baseRaw) : null;
+            const baseVersion = basePkg?.version;
+            const headVersion = headPkg.version;
+
+            if (!baseVersion || baseVersion !== headVersion) {
+              changed.push({
+                path: pkgPath,
+                name: headPkg.name,
+                version: headVersion
+              });
             }
           }
-          console.log('All package versions match tag', process.env.TAG_NAME);
+
+          const hasChanges = changed.length > 0;
+          fs.appendFileSync(outputPath, `matrix=${JSON.stringify({ include: changed })}\n`);
+          fs.appendFileSync(outputPath, `has_changes=${hasChanges}\n`);
+
+          if (!hasChanges) {
+            console.log('No package version changes detected.');
+          } else {
+            for (const pkg of changed) {
+              console.log(`Will publish ${pkg.name}@${pkg.version}`);
+            }
+          }
           "
 
-      - name: Publish @caprail/config-runtime
-        uses: actions/npm-publish@v3
-        with:
-          package: packages/shared/config-runtime
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+  publish:
+    needs: prepare
+    if: ${{ needs.prepare.outputs.has_changes == 'true' }}
+    runs-on: ubuntu-latest
+    strategy:
+      max-parallel: 1
+      matrix: ${{ fromJson(needs.prepare.outputs.matrix) }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
 
-      - name: Publish @caprail/guard-cli
-        uses: actions/npm-publish@v3
+      - name: Setup Node
+        uses: actions/setup-node@v6
         with:
-          package: packages/guards/cli
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          node-version: "24"
+          registry-url: "https://registry.npmjs.org"
 
-      - name: Publish @caprail/transport-argv
-        uses: actions/npm-publish@v3
-        with:
-          package: packages/transports/argv
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+      - name: Install dependencies
+        run: npm ci
 
-      - name: Publish @caprail/transport-http
-        uses: actions/npm-publish@v3
-        with:
-          package: packages/transports/http
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-
-      - name: Publish @caprail/cli-argv
-        uses: actions/npm-publish@v3
-        with:
-          package: packages/products/cli-argv
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-
-      - name: Publish @caprail/cli-http
-        uses: actions/npm-publish@v3
-        with:
-          package: packages/products/cli-http
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+      - name: Publish ${{ matrix.name }}@${{ matrix.version }}
+        run: npm publish --workspace "${{ matrix.path }}" --access public --provenance
