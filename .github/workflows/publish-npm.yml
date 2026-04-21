@@ -56,49 +56,43 @@ jobs:
           "
 
       - name: Publish @caprail/config-runtime
-        uses: JS-DevTools/npm-publish@v4
+        uses: actions/npm-publish@v3
         with:
-          token: ${{ secrets.NPM_TOKEN }}
           package: packages/shared/config-runtime
-          access: public
-          provenance: true
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
       - name: Publish @caprail/guard-cli
-        uses: JS-DevTools/npm-publish@v4
+        uses: actions/npm-publish@v3
         with:
-          token: ${{ secrets.NPM_TOKEN }}
           package: packages/guards/cli
-          access: public
-          provenance: true
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
       - name: Publish @caprail/transport-argv
-        uses: JS-DevTools/npm-publish@v4
+        uses: actions/npm-publish@v3
         with:
-          token: ${{ secrets.NPM_TOKEN }}
           package: packages/transports/argv
-          access: public
-          provenance: true
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
       - name: Publish @caprail/transport-http
-        uses: JS-DevTools/npm-publish@v4
+        uses: actions/npm-publish@v3
         with:
-          token: ${{ secrets.NPM_TOKEN }}
           package: packages/transports/http
-          access: public
-          provenance: true
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
       - name: Publish @caprail/cli-argv
-        uses: JS-DevTools/npm-publish@v4
+        uses: actions/npm-publish@v3
         with:
-          token: ${{ secrets.NPM_TOKEN }}
           package: packages/products/cli-argv
-          access: public
-          provenance: true
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
       - name: Publish @caprail/cli-http
-        uses: JS-DevTools/npm-publish@v4
+        uses: actions/npm-publish@v3
         with:
-          token: ${{ secrets.NPM_TOKEN }}
           package: packages/products/cli-http
-          access: public
-          provenance: true
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
