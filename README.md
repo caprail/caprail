@@ -4,6 +4,8 @@ Policy-enforced access to host capabilities for AI coding agents.
 
 Caprail sits between an agent and the real CLI binary, allowing only pre-configured subcommands to execute. The agent gets useful tool access — reading PRs, listing resources, drafting emails — without the ability to run arbitrary commands against authenticated vendor CLIs.
 
+> **Looking for the npm package?** Most readers will want [`@caprail/cli-http`](packages/products/cli-http/README.md#install). Its [README](packages/products/cli-http/README.md) has the install command, binary name, and startup examples.
+
 **This is not theoretical.** Caprail's `cli-http` product is running in production as a Docker sidecar, giving [Openclaw](https://github.com/nicholasgasior/openclaw) policy-based access to a personal GitHub (`gh`) and Google Workspace email (`gws`). The agent can read PRs, view issues, list emails, and create drafts — but cannot merge, delete, or send. It works exactly as designed.
 
 ## The problem

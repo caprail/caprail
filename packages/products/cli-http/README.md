@@ -22,6 +22,27 @@ This package ships a single canonical executable:
 
 - `caprail-cli-http`
 
+## Minimal policy example
+
+A Caprail policy lives in the config file you pass to `--config`. For a simple read-only GitHub setup using `gh`, the policy can look like this:
+
+```yaml
+tools:
+  gh:
+    binary: gh
+    description: GitHub CLI (read-only PR and issue access)
+    allow:
+      - pr list
+      - pr view
+      - pr diff
+      - issue list
+      - issue view
+    deny_flags:
+      - --web
+```
+
+For the full policy schema, matching rules, and config-loading behavior, see the [`@caprail/guard-cli` README](../../guards/cli/README.md).
+
 ## Quickstart
 
 Token mode:
