@@ -1,29 +1,28 @@
-name: Publish npm packages
+name: Publish npm package
 
 on:
   push:
-    branches:
-      - main
-    paths:
-      - "packages/**/package.json"
-      - ".github/workflows/publish-npm.yml"
-  workflow_dispatch:
+    tags:
+      - "config-runtime-v*"
+      - "guard-cli-v*"
+      - "transport-http-v*"
+      - "cli-http-v*"
 
 permissions:
   contents: read
   id-token: write
 
+concurrency:
+  group: publish-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
-  prepare:
+  publish:
     runs-on: ubuntu-latest
-    outputs:
-      matrix: ${{ steps.changed.outputs.matrix }}
-      has_changes: ${{ steps.changed.outputs.has_changes }}
+
     steps:
       - name: Checkout
         uses: actions/checkout@v6
-        with:
-          fetch-depth: 0
 
       - name: Setup Node
         uses: actions/setup-node@v6
@@ -37,87 +36,72 @@ jobs:
       - name: Verify tests
         run: npm test --workspaces
 
-      - name: Detect packages with version changes
-        id: changed
-        env:
-          BEFORE_SHA: ${{ github.event.before }}
-          GITHUB_SHA: ${{ github.sha }}
+      - name: Resolve package from tag
+        id: target
+        shell: bash
         run: |
-          node -e "
-          const fs = require('fs');
-          const { execSync } = require('child_process');
+          TAG_NAME="${GITHUB_REF_NAME}"
 
-          const packages = [
-            'packages/shared/config-runtime',
-            'packages/guards/cli',
-            'packages/transports/argv',
-            'packages/transports/http',
-            'packages/products/cli-argv',
-            'packages/products/cli-http'
-          ];
+          case "${TAG_NAME}" in
+            config-runtime-v*)
+              echo "package_path=packages/shared/config-runtime" >> "$GITHUB_OUTPUT"
+              echo "tag_prefix=config-runtime-v" >> "$GITHUB_OUTPUT"
+              ;;
+            guard-cli-v*)
+              echo "package_path=packages/guards/cli" >> "$GITHUB_OUTPUT"
+              echo "tag_prefix=guard-cli-v" >> "$GITHUB_OUTPUT"
+              ;;
+            transport-http-v*)
+              echo "package_path=packages/transports/http" >> "$GITHUB_OUTPUT"
+              echo "tag_prefix=transport-http-v" >> "$GITHUB_OUTPUT"
+              ;;
+            cli-http-v*)
+              echo "package_path=packages/products/cli-http" >> "$GITHUB_OUTPUT"
+              echo "tag_prefix=cli-http-v" >> "$GITHUB_OUTPUT"
+              ;;
+            *)
+              echo "Unsupported release tag '${TAG_NAME}'" >&2
+              exit 1
+              ;;
+          esac
 
-          const outputPath = process.env.GITHUB_OUTPUT;
-          const beforeSha = process.env.BEFORE_SHA;
+      - name: Read package metadata
+        id: package
+        shell: bash
+        run: |
+          PACKAGE_PATH="${{ steps.target.outputs.package_path }}"
+          PACKAGE_JSON="${PACKAGE_PATH}/package.json"
 
-          const readAtRef = (ref, filePath) => {
-            try {
-              return execSync(`git show ${ref}:${filePath}`, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] });
-            } catch {
-              return null;
-            }
-          };
+          echo "name=$(node -p "require('./${PACKAGE_JSON}').name")" >> "$GITHUB_OUTPUT"
+          echo "version=$(node -p "require('./${PACKAGE_JSON}').version")" >> "$GITHUB_OUTPUT"
 
-          const changed = [];
+      - name: Validate tag matches package version
+        shell: bash
+        run: |
+          EXPECTED_TAG="${{ steps.target.outputs.tag_prefix }}${{ steps.package.outputs.version }}"
+          ACTUAL_TAG="${GITHUB_REF_NAME}"
 
-          for (const pkgPath of packages) {
-            const manifestPath = `${pkgPath}/package.json`;
-            const headPkg = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
-            const baseRaw = beforeSha ? readAtRef(beforeSha, manifestPath) : null;
-            const basePkg = baseRaw ? JSON.parse(baseRaw) : null;
-            const baseVersion = basePkg?.version;
-            const headVersion = headPkg.version;
+          if [ "${ACTUAL_TAG}" != "${EXPECTED_TAG}" ]; then
+            echo "Tag ${ACTUAL_TAG} does not match expected ${EXPECTED_TAG} for ${{ steps.package.outputs.name }}@${{ steps.package.outputs.version }}" >&2
+            exit 1
+          fi
 
-            if (!baseVersion || baseVersion !== headVersion) {
-              changed.push({
-                path: pkgPath,
-                name: headPkg.name,
-                version: headVersion
-              });
-            }
-          }
+      - name: Check whether version already exists on npm
+        id: npm_version
+        shell: bash
+        run: |
+          if npm view "${{ steps.package.outputs.name }}@${{ steps.package.outputs.version }}" version >/dev/null 2>&1; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+            echo "Version already exists on npm; publish step will be skipped."
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          fi
 
-          const hasChanges = changed.length > 0;
-          fs.appendFileSync(outputPath, `matrix=${JSON.stringify({ include: changed })}\n`);
-          fs.appendFileSync(outputPath, `has_changes=${hasChanges}\n`);
+      - name: Publish to npm via trusted publishing
+        if: ${{ steps.npm_version.outputs.exists != 'true' }}
+        run: npm publish --workspace "${{ steps.target.outputs.package_path }}" --access public --provenance
 
-          if (!hasChanges) {
-            console.log('No package version changes detected.');
-          } else {
-            for (const pkg of changed) {
-              console.log(`Will publish ${pkg.name}@${pkg.version}`);
-            }
-          }
-          "
-
-  publish:
-    needs: prepare
-    if: ${{ needs.prepare.outputs.has_changes == 'true' }}
-    runs-on: ubuntu-latest
-    strategy:
-      max-parallel: 1
-      matrix: ${{ fromJson(needs.prepare.outputs.matrix) }}
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v6
-
-      - name: Setup Node
-        uses: actions/setup-node@v6
-        with:
-          node-version: "24"
-          registry-url: "https://registry.npmjs.org"
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Publish ${{ matrix.name }}@${{ matrix.version }}
-        run: npm publish --workspace "${{ matrix.path }}" --access public --provenance
+      - name: Note skipped npm publish
+        if: ${{ steps.npm_version.outputs.exists == 'true' }}
+        shell: bash
+        run: echo "Skipping npm publish because ${{ steps.package.outputs.name }}@${{ steps.package.outputs.version }} already exists."
