@@ -1,0 +1,107 @@
+name: Publish npm package
+
+on:
+  push:
+    tags:
+      - "config-runtime-v*"
+      - "guard-cli-v*"
+      - "transport-http-v*"
+      - "cli-http-v*"
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: publish-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: "24"
+          registry-url: "https://registry.npmjs.org"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Verify tests
+        run: npm test --workspaces
+
+      - name: Resolve package from tag
+        id: target
+        shell: bash
+        run: |
+          TAG_NAME="${GITHUB_REF_NAME}"
+
+          case "${TAG_NAME}" in
+            config-runtime-v*)
+              echo "package_path=packages/shared/config-runtime" >> "$GITHUB_OUTPUT"
+              echo "tag_prefix=config-runtime-v" >> "$GITHUB_OUTPUT"
+              ;;
+            guard-cli-v*)
+              echo "package_path=packages/guards/cli" >> "$GITHUB_OUTPUT"
+              echo "tag_prefix=guard-cli-v" >> "$GITHUB_OUTPUT"
+              ;;
+            transport-http-v*)
+              echo "package_path=packages/transports/http" >> "$GITHUB_OUTPUT"
+              echo "tag_prefix=transport-http-v" >> "$GITHUB_OUTPUT"
+              ;;
+            cli-http-v*)
+              echo "package_path=packages/products/cli-http" >> "$GITHUB_OUTPUT"
+              echo "tag_prefix=cli-http-v" >> "$GITHUB_OUTPUT"
+              ;;
+            *)
+              echo "Unsupported release tag '${TAG_NAME}'" >&2
+              exit 1
+              ;;
+          esac
+
+      - name: Read package metadata
+        id: package
+        shell: bash
+        run: |
+          PACKAGE_PATH="${{ steps.target.outputs.package_path }}"
+          PACKAGE_JSON="${PACKAGE_PATH}/package.json"
+
+          echo "name=$(node -p "require('./${PACKAGE_JSON}').name")" >> "$GITHUB_OUTPUT"
+          echo "version=$(node -p "require('./${PACKAGE_JSON}').version")" >> "$GITHUB_OUTPUT"
+
+      - name: Validate tag matches package version
+        shell: bash
+        run: |
+          EXPECTED_TAG="${{ steps.target.outputs.tag_prefix }}${{ steps.package.outputs.version }}"
+          ACTUAL_TAG="${GITHUB_REF_NAME}"
+
+          if [ "${ACTUAL_TAG}" != "${EXPECTED_TAG}" ]; then
+            echo "Tag ${ACTUAL_TAG} does not match expected ${EXPECTED_TAG} for ${{ steps.package.outputs.name }}@${{ steps.package.outputs.version }}" >&2
+            exit 1
+          fi
+
+      - name: Check whether version already exists on npm
+        id: npm_version
+        shell: bash
+        run: |
+          if npm view "${{ steps.package.outputs.name }}@${{ steps.package.outputs.version }}" version >/dev/null 2>&1; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+            echo "Version already exists on npm; publish step will be skipped."
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Publish to npm via trusted publishing
+        if: ${{ steps.npm_version.outputs.exists != 'true' }}
+        run: npm publish --workspace "${{ steps.target.outputs.package_path }}" --access public --provenance
+
+      - name: Note skipped npm publish
+        if: ${{ steps.npm_version.outputs.exists == 'true' }}
+        shell: bash
+        run: echo "Skipping npm publish because ${{ steps.package.outputs.name }}@${{ steps.package.outputs.version }} already exists."
