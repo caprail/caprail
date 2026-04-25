@@ -25,5 +25,11 @@
   "dependencies": {
     "@caprail/guard-cli": "0.2.0",
     "@caprail/transport-http": "0.2.0"
-  }
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/caprail/caprail",
+    "directory": "packages/products/cli-http"
+  },
+  "homepage": "https://github.com/caprail/caprail/tree/main/packages/products/cli-http#readme"
 }

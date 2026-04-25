@@ -20,5 +20,11 @@
   },
   "dependencies": {
     "@caprail/config-runtime": "0.2.0"
-  }
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/caprail/caprail",
+    "directory": "packages/transports/http"
+  },
+  "homepage": "https://github.com/caprail/caprail/tree/main/packages/transports/http#readme"
 }

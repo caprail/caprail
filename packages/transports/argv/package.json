@@ -17,5 +17,11 @@
   },
   "scripts": {
     "test": "node --test ./test/*.test.js"
-  }
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/caprail/caprail",
+    "directory": "packages/transports/argv"
+  },
+  "homepage": "https://github.com/caprail/caprail/tree/main/packages/transports/argv#readme"
 }

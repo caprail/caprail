@@ -20,5 +20,11 @@
   },
   "dependencies": {
     "yaml": "^2.8.1"
-  }
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/caprail/caprail",
+    "directory": "packages/guards/cli"
+  },
+  "homepage": "https://github.com/caprail/caprail/tree/main/packages/guards/cli#readme"
 }
