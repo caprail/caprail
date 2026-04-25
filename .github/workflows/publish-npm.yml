@@ -7,6 +7,38 @@ on:
       - "guard-cli-v*"
       - "transport-http-v*"
       - "cli-http-v*"
+  workflow_dispatch:
+    inputs:
+      publish_config_runtime:
+        description: "Publish @caprail/config-runtime"
+        required: false
+        type: boolean
+        default: true
+      publish_guard_cli:
+        description: "Publish @caprail/guard-cli"
+        required: false
+        type: boolean
+        default: true
+      publish_transport_argv:
+        description: "Publish @caprail/transport-argv"
+        required: false
+        type: boolean
+        default: true
+      publish_transport_http:
+        description: "Publish @caprail/transport-http"
+        required: false
+        type: boolean
+        default: true
+      publish_cli_argv:
+        description: "Publish @caprail/cli-argv"
+        required: false
+        type: boolean
+        default: true
+      publish_cli_http:
+        description: "Publish @caprail/cli-http"
+        required: false
+        type: boolean
+        default: true
 
 permissions:
   contents: read
@@ -17,7 +49,8 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  publish:
+  publish_from_tag:
+    if: ${{ github.event_name == 'push' }}
     runs-on: ubuntu-latest
 
     steps:
@@ -105,3 +138,87 @@ jobs:
         if: ${{ steps.npm_version.outputs.exists == 'true' }}
         shell: bash
         run: echo "Skipping npm publish because ${{ steps.package.outputs.name }}@${{ steps.package.outputs.version }} already exists."
+
+  publish_from_dispatch:
+    if: ${{ github.event_name == 'workflow_dispatch' }}
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: "24"
+          registry-url: "https://registry.npmjs.org"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Verify tests
+        run: npm test --workspaces
+
+      - name: Publish selected packages in dependency order
+        shell: bash
+        env:
+          PUBLISH_CONFIG_RUNTIME: ${{ inputs.publish_config_runtime }}
+          PUBLISH_GUARD_CLI: ${{ inputs.publish_guard_cli }}
+          PUBLISH_TRANSPORT_ARGV: ${{ inputs.publish_transport_argv }}
+          PUBLISH_TRANSPORT_HTTP: ${{ inputs.publish_transport_http }}
+          PUBLISH_CLI_ARGV: ${{ inputs.publish_cli_argv }}
+          PUBLISH_CLI_HTTP: ${{ inputs.publish_cli_http }}
+        run: |
+          set -euo pipefail
+
+          declare -a SELECTED_PATHS=()
+
+          if [ "${PUBLISH_CONFIG_RUNTIME}" = "true" ]; then
+            SELECTED_PATHS+=("packages/shared/config-runtime")
+          fi
+
+          if [ "${PUBLISH_GUARD_CLI}" = "true" ]; then
+            SELECTED_PATHS+=("packages/guards/cli")
+          fi
+
+          if [ "${PUBLISH_TRANSPORT_ARGV}" = "true" ]; then
+            SELECTED_PATHS+=("packages/transports/argv")
+          fi
+
+          if [ "${PUBLISH_TRANSPORT_HTTP}" = "true" ]; then
+            SELECTED_PATHS+=("packages/transports/http")
+          fi
+
+          if [ "${PUBLISH_CLI_ARGV}" = "true" ]; then
+            SELECTED_PATHS+=("packages/products/cli-argv")
+          fi
+
+          if [ "${PUBLISH_CLI_HTTP}" = "true" ]; then
+            SELECTED_PATHS+=("packages/products/cli-http")
+          fi
+
+          if [ "${#SELECTED_PATHS[@]}" -eq 0 ]; then
+            echo "No packages selected. Nothing to publish."
+            exit 0
+          fi
+
+          echo "Selected package paths:"
+          for PACKAGE_PATH in "${SELECTED_PATHS[@]}"; do
+            echo "- ${PACKAGE_PATH}"
+          done
+
+          for PACKAGE_PATH in "${SELECTED_PATHS[@]}"; do
+            PACKAGE_JSON="${PACKAGE_PATH}/package.json"
+            PACKAGE_NAME="$(node -p "require('./${PACKAGE_JSON}').name")"
+            PACKAGE_VERSION="$(node -p "require('./${PACKAGE_JSON}').version")"
+
+            echo "Evaluating ${PACKAGE_NAME}@${PACKAGE_VERSION}"
+
+            if npm view "${PACKAGE_NAME}@${PACKAGE_VERSION}" version >/dev/null 2>&1; then
+              echo "Skipping ${PACKAGE_NAME}@${PACKAGE_VERSION}; version already exists on npm."
+              continue
+            fi
+
+            echo "Publishing ${PACKAGE_NAME}@${PACKAGE_VERSION}"
+            npm publish --workspace "${PACKAGE_PATH}" --access public --provenance
+          done
