@@ -1,6 +1,6 @@
 {
   "name": "@caprail/cli-http",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Runnable HTTP product for Caprail CLI guard",
   "type": "module",
   "main": "./src/index.js",
@@ -23,7 +23,7 @@
     "test": "node --test ./test/*.test.js"
   },
   "dependencies": {
-    "@caprail/guard-cli": "0.1.0",
-    "@caprail/transport-http": "0.1.0"
+    "@caprail/guard-cli": "0.2.0",
+    "@caprail/transport-http": "0.2.0"
   }
 }

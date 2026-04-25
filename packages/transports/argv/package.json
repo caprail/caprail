@@ -1,6 +1,6 @@
 {
   "name": "@caprail/transport-argv",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Argv transport for command-token guards in the Caprail family",
   "type": "module",
   "main": "./src/index.js",

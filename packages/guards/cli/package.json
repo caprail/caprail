@@ -1,6 +1,6 @@
 {
   "name": "@caprail/guard-cli",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Transport-agnostic CLI guard core for Caprail",
   "type": "module",
   "main": "./src/index.js",
