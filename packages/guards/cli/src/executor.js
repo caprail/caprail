@@ -80,7 +80,8 @@ export async function executeGuardedCommand(config, toolName, args, options = {}
 
   try {
     const completed = await new Promise((resolvePromise, rejectPromise) => {
-      const child = spawn(toolConfig.binary, args, {
+      const spawnArgs = [...(toolConfig.argvPrefix ?? []), ...args];
+      const child = spawn(toolConfig.binary, spawnArgs, {
         shell: false,
         stdio: ['ignore', 'pipe', 'pipe'],
         env: {

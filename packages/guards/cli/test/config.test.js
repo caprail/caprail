@@ -128,6 +128,7 @@ tools:
     allow: [],
     deny: [],
     denyFlags: [],
+    argvPrefix: [],
   });
 });
 
@@ -137,6 +138,37 @@ test('schema rejects malformed yaml with a structured error', () => {
   assert.equal(result.ok, false);
   assert.equal(result.error.code, 'config_parse_error');
   assert.match(result.error.message, /yaml/i);
+});
+
+test('parse normalizes argv_prefix into an array of strings', () => {
+  const result = parseConfig(`
+tools:
+  az:
+    binary: /usr/bin/python3
+    argv_prefix:
+      - -IBm
+      - azure.cli
+    allow:
+      - account list
+`, { configPath: '/tmp/policy.yaml' });
+
+  assert.equal(result.ok, true);
+  assert.deepEqual(result.config.tools.az.argvPrefix, ['-IBm', 'azure.cli']);
+});
+
+test('parse rejects non-array argv_prefix with a structured error', () => {
+  const result = parseConfig(`
+tools:
+  az:
+    binary: az
+    argv_prefix: "-IBm azure.cli"
+    allow:
+      - account list
+`, { configPath: '/tmp/policy.yaml' });
+
+  assert.equal(result.ok, false);
+  assert.equal(result.error.code, 'config_invalid');
+  assert.match(result.error.message, /argv_prefix/);
 });
 
 test('schema rejects invalid tool definitions with a structured error', () => {

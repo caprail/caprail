@@ -146,3 +146,65 @@ test('executor supports text audit logs and returns child failure metadata', asy
   assert.match(Buffer.concat(stderrChunks).toString('utf8'), /child failed/);
   assert.match(readFileSync(auditPath, 'utf8'), /ALLOWED node/);
 });
+
+test('executor prepends argv_prefix tokens before user args when spawning', async () => {
+  const stdoutChunks = [];
+  const config = {
+    settings: {
+      auditLog: 'none',
+      auditFormat: 'jsonl',
+    },
+    tools: {
+      node: {
+        name: 'node',
+        binary: process.execPath,
+        argvPrefix: [fixturePath, 'capture-env'],
+        description: 'Node with argv_prefix',
+        allow: ['prefixed-arg'],
+        deny: [],
+        denyFlags: [],
+      },
+    },
+  };
+
+  const result = await executeGuardedCommand(config, 'node', ['prefixed-arg'], {
+    onStdout: (chunk) => stdoutChunks.push(chunk),
+  });
+
+  assert.equal(result.status, 'executed');
+  assert.equal(result.allowed, true);
+  assert.equal(result.executed, true);
+  assert.equal(result.exitCode, 0);
+
+  // The child receives only the user args (prefix tokens are consumed as mode/path by the fixture).
+  const payload = JSON.parse(Buffer.concat(stdoutChunks).toString('utf8').trim());
+
+  assert.deepEqual(payload.args, ['prefixed-arg']);
+});
+
+test('executor evaluates policy against user args not argv_prefix tokens', async () => {
+  const config = {
+    settings: {
+      auditLog: 'none',
+      auditFormat: 'jsonl',
+    },
+    tools: {
+      node: {
+        name: 'node',
+        binary: process.execPath,
+        argvPrefix: [fixturePath, 'echo'],
+        description: 'Node with argv_prefix',
+        allow: ['hello'],
+        deny: [],
+        denyFlags: [],
+      },
+    },
+  };
+
+  // 'blocked' is not in the allow list; policy should deny it regardless of prefix.
+  const denied = await executeGuardedCommand(config, 'node', ['blocked']);
+
+  assert.equal(denied.status, 'denied');
+  assert.equal(denied.allowed, false);
+  assert.equal(denied.executed, false);
+});

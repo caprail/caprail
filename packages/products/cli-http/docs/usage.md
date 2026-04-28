@@ -1,5 +1,16 @@
 # @caprail/cli-http usage
 
+## Installation
+
+Install globally so the `caprail-cli-http` binary is available on `PATH`:
+
+```bash
+npm install -g @caprail/cli-http
+```
+
+Local installs place the binary in `node_modules/.bin`, which is only on `PATH` inside `npm scripts`
+or when invoked via `npx`. A global install is recommended for direct CLI use.
+
 ## Invocation shape
 
 ```bash
@@ -158,6 +169,34 @@ Process exits non-zero.
 `/exec` returns `403 policy_denied` when request tokens do not match an allow entry.
 
 Important: matching is token-exact. If your allow rule uses one path form and your request uses another, it can be denied.
+
+---
+
+## Windows notes
+
+On Windows some tools (such as Azure CLI) are Python-based wrappers rather than native `.exe` files.
+`spawn` with `shell: false` cannot resolve them by short name, which causes `ENOENT` errors.
+
+Use the `argv_prefix` config field to specify a launcher binary and its bootstrap args:
+
+```yaml
+tools:
+  az:
+    binary: "C:\\Program Files\\Microsoft SDKs\\Azure\\CLI2\\python.exe"
+    argv_prefix:
+      - -IBm
+      - azure.cli
+    allow:
+      - account list
+      - group list
+```
+
+- Client sends args: `account list --output table`
+- Policy evaluates those clean args against your allowlist
+- Actual spawn: `python.exe -IBm azure.cli account list --output table`
+
+This keeps `shell: false` safety while supporting interpreter-wrapped tools. See
+`packages/guards/cli/docs/config.md` for full `argv_prefix` documentation.
 
 ---
 

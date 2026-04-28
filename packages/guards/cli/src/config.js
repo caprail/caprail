@@ -358,6 +358,12 @@ function normalizeToolConfig(toolName, rawTool, configPath) {
     return denyFlags;
   }
 
+  const argvPrefix = normalizeTokenList(rawTool.argv_prefix, `tools.${toolName}.argv_prefix`, configPath);
+
+  if (!argvPrefix.ok) {
+    return argvPrefix;
+  }
+
   return {
     ok: true,
     tool: {
@@ -367,6 +373,7 @@ function normalizeToolConfig(toolName, rawTool, configPath) {
       allow: allow.values,
       deny: deny.values,
       denyFlags: denyFlags.values,
+      argvPrefix: argvPrefix.values,
     },
   };
 }
