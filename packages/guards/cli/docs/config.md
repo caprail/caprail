@@ -32,7 +32,52 @@ tools:
       - pr create
     deny_flags:
       - --web
+  az:
+    binary: "C:\\Program Files\\Microsoft SDKs\\Azure\\CLI2\\python.exe"
+    argv_prefix:
+      - -IBm
+      - azure.cli
+    allow:
+      - account list
 ```
+
+## Fields
+
+| Field | Required | Description |
+|---|---|---|
+| `binary` | yes | Executable to launch (full path or name resolved via `PATH`) |
+| `description` | no | Human-readable tool description |
+| `allow` | no | Allowlist of command token sequences (empty = deny all) |
+| `deny` | no | Denylist of command token sequences evaluated before allow |
+| `deny_flags` | no | Individual flags that are always denied regardless of allow |
+| `argv_prefix` | no | Fixed tokens prepended to spawn args before user args (see below) |
+
+### `argv_prefix` — per-tool argument prefix
+
+`argv_prefix` accepts an optional list of strings that are inserted between the binary and the
+user-supplied args at spawn time. Policy evaluation still operates on the original user args only;
+prefix tokens are never included in allowlist matching.
+
+**Use case:** tools that are not directly executable on the host (e.g. Windows Azure CLI, which is
+a Python-based wrapper rather than a native `.exe`):
+
+```yaml
+tools:
+  az:
+    binary: "C:\\Program Files\\Microsoft SDKs\\Azure\\CLI2\\python.exe"
+    argv_prefix:
+      - -IBm
+      - azure.cli
+    allow:
+      - account list
+      - group list
+```
+
+- Client sends args: `account list --output table`
+- Policy evaluates: `account list --output table` (clean, no prefix)
+- Actual spawn: `python.exe -IBm azure.cli account list --output table`
+
+This preserves `shell: false` safety while accommodating interpreter-wrapped tools.
 
 ## Normalization
 
